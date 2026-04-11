@@ -1,0 +1,24 @@
+# Secrets
+.env
+
+# Data files — regenerate with fetch scripts
+data/**/*.csv
+data/**/*.json
+# But keep directory structure and index files
+!data/**/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
