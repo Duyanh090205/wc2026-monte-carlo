@@ -1,25 +1,41 @@
 # Secrets
 .env
 
-# Data files — large/regenerable sources stay out
+# ── Predexon (large OHLCV data — not tracked) ─────────────────────────────────
 data/predexon/**/*.csv
 data/predexon/**/*.json
-# But keep index files and directory markers
+# Keep index files
 !data/predexon/market_index.json
 !data/predexon/kalshi_market_index.json
 !data/**/.gitkeep
 
-# Scraper/probe debug HTML
+# ── Sportsbook timestamped snapshots (keep latest.json only) ──────────────────
+# Scrapers create a new timestamped CSV each run — these bloat git history.
+# Only the latest.json snapshot is tracked for each source.
+
+data/oddschecker/**/*.csv
+data/sportsgameodds/**/*.csv
+data/pinnacle/**/*.csv
+data/the_odds_api/**/*.csv
+data/orderbooks/**/*.csv
+data/normalized/**/*.csv
+
+# Keep latest.json for each source
+!data/oddschecker/**/latest.json
+!data/sportsgameodds/**/latest.json
+!data/pinnacle/**/latest.json
+!data/the_odds_api/**/latest.json
+!data/orderbooks/**/latest.json
+!data/normalized/entity_map.json
+
+# ── Football-data.co.uk (historical, large — not tracked) ─────────────────────
+data/football_data_uk/
+
+# ── Scraper debug HTML ─────────────────────────────────────────────────────────
 data/*.html
+data/**/*.html
 
-# Sportsbook snapshot data — small, keep in git
-# data/oddschecker/**      -> tracked
-# data/sportsgameodds/**   -> tracked
-# data/pinnacle/**         -> tracked
-# data/the_odds_api/**     -> tracked
-# data/orderbooks/**       -> tracked (bid-ask snapshots)
-
-# Python
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -27,10 +43,13 @@ __pycache__/
 venv/
 env/
 
-# OS
+# ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 
-# IDE
+# ── IDE ───────────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
+
+# ── Stray artifact files ──────────────────────────────────────────────────────
+compass_artifact_*.md
