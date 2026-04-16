@@ -13,10 +13,11 @@ data/predexon/**/*.json
 data/*.html
 
 # Sportsbook snapshot data — small, keep in git
-# data/oddschecker/**  -> tracked
-# data/sportsgameodds/** -> tracked
-# data/pinnacle/**     -> tracked
-# data/the_odds_api/** -> tracked
+# data/oddschecker/**      -> tracked
+# data/sportsgameodds/**   -> tracked
+# data/pinnacle/**         -> tracked
+# data/the_odds_api/**     -> tracked
+# data/orderbooks/**       -> tracked (bid-ask snapshots)
 
 # Python
 __pycache__/
