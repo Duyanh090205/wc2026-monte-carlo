@@ -1,11 +1,22 @@
 # Secrets
 .env
 
-# Data files — regenerate with fetch scripts
-data/**/*.csv
-data/**/*.json
-# But keep directory structure and index files
+# Data files — large/regenerable sources stay out
+data/predexon/**/*.csv
+data/predexon/**/*.json
+# But keep index files and directory markers
+!data/predexon/market_index.json
+!data/predexon/kalshi_market_index.json
 !data/**/.gitkeep
+
+# Scraper/probe debug HTML
+data/*.html
+
+# Sportsbook snapshot data — small, keep in git
+# data/oddschecker/**  -> tracked
+# data/sportsgameodds/** -> tracked
+# data/pinnacle/**     -> tracked
+# data/the_odds_api/** -> tracked
 
 # Python
 __pycache__/
