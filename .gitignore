@@ -2,22 +2,23 @@
 .env
 
 # Data files — large/regenerable sources stay out
-data/predexon/**/*.csv
-data/predexon/**/*.json
+data/raw/predexon/**/*.csv
+data/raw/predexon/**/*.json
 # But keep index files and directory markers
-!data/predexon/market_index.json
-!data/predexon/kalshi_market_index.json
+!data/raw/predexon/market_index.json
+!data/raw/predexon/kalshi_market_index.json
 !data/**/.gitkeep
 
 # Scraper/probe debug HTML
 data/*.html
 
 # Sportsbook snapshot data — small, keep in git
-# data/oddschecker/**      -> tracked
-# data/sportsgameodds/**   -> tracked
-# data/pinnacle/**         -> tracked
-# data/the_odds_api/**     -> tracked
-# data/orderbooks/**       -> tracked (bid-ask snapshots)
+# data/raw/oddschecker/**          -> tracked
+# data/raw/sgo/**                  -> tracked
+# data/raw/pinnacle/**             -> tracked
+# data/raw/betfair/**              -> tracked
+# data/raw/polymarket_orderbook/** -> tracked (bid-ask snapshots)
+# data/raw/kalshi_orderbook/**     -> tracked (bid-ask snapshots)
 
 # Python
 __pycache__/
