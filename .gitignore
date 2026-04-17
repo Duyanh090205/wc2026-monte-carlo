@@ -21,7 +21,6 @@ data/raw/polymarket_orderbook/**/*.csv
 data/raw/kalshi_orderbook/**/*.csv
 data/clean/**/*.csv
 data/model_input/**/*.csv
-data/fair_odds/**/*.csv
 
 # Keep latest.json for each source
 !data/raw/oddschecker/**/latest.json
