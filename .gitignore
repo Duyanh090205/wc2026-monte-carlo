@@ -1,26 +1,44 @@
 # Secrets
 .env
 
-# Data files — large/regenerable sources stay out
+# ── Predexon (large OHLCV data — not tracked) ─────────────────────────────────
 data/raw/predexon/**/*.csv
 data/raw/predexon/**/*.json
-# But keep index files and directory markers
+# Keep index files
 !data/raw/predexon/market_index.json
 !data/raw/predexon/kalshi_market_index.json
 !data/**/.gitkeep
 
-# Scraper/probe debug HTML
+# ── Sportsbook timestamped snapshots (keep latest.json only) ──────────────────
+# Scrapers create a new timestamped CSV each run — these bloat git history.
+# Only the latest.json snapshot is tracked for each source.
+
+data/raw/oddschecker/**/*.csv
+data/raw/sgo/**/*.csv
+data/raw/pinnacle/**/*.csv
+data/raw/betfair/**/*.csv
+data/raw/polymarket_orderbook/**/*.csv
+data/raw/kalshi_orderbook/**/*.csv
+data/clean/**/*.csv
+data/model_input/**/*.csv
+
+# Keep latest.json for each source
+!data/raw/oddschecker/**/latest.json
+!data/raw/sgo/**/latest.json
+!data/raw/pinnacle/**/latest.json
+!data/raw/betfair/**/latest.json
+!data/raw/polymarket_orderbook/**/latest.json
+!data/raw/kalshi_orderbook/**/latest.json
+!data/clean/entity_map.json
+
+# ── Football-data.co.uk (historical, large — not tracked) ─────────────────────
+data/raw/football_data_uk/
+
+# ── Scraper debug HTML ─────────────────────────────────────────────────────────
 data/*.html
+data/**/*.html
 
-# Sportsbook snapshot data — small, keep in git
-# data/raw/oddschecker/**          -> tracked
-# data/raw/sgo/**                  -> tracked
-# data/raw/pinnacle/**             -> tracked
-# data/raw/betfair/**              -> tracked
-# data/raw/polymarket_orderbook/** -> tracked (bid-ask snapshots)
-# data/raw/kalshi_orderbook/**     -> tracked (bid-ask snapshots)
-
-# Python
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -28,10 +46,13 @@ __pycache__/
 venv/
 env/
 
-# OS
+# ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 
-# IDE
+# ── IDE ───────────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
+
+# ── Stray artifact files ──────────────────────────────────────────────────────
+compass_artifact_*.md
