@@ -1,5 +1,9 @@
 # Secrets
 .env
+credentials/
+*.pem
+*.key
+config/secrets.json
 
 # ── Predexon (large OHLCV data — not tracked) ─────────────────────────────────
 data/raw/predexon/**/*.csv
@@ -33,6 +37,24 @@ data/model_input/**/*.csv
 
 # ── Football-data.co.uk (historical, large — not tracked) ─────────────────────
 data/raw/football_data_uk/
+
+# ── Auto-generated data (large, rebuilt on demand) ────────────────────────────
+data/raw/pm_snapshots/
+data/raw/wayback/
+data/fair_odds_history/
+data/signals/
+data/backtest/
+data/pm_historical/
+data/tournament/
+data/reports/
+logs/
+reports/
+
+# ── Claude session files ───────────────────────────────────────────────────────
+.claude/
+
+# ── Scheduler script (local machine config) ───────────────────────────────────
+register_scheduler.ps1
 
 # ── Scraper debug HTML ─────────────────────────────────────────────────────────
 data/*.html
