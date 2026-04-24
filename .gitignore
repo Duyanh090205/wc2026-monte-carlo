@@ -1,3 +1,7 @@
+# ── External projects (not part of this repo) ─────────────────────────────────
+polymarket-sports/
+pip_cache/
+
 # Secrets
 .env
 credentials/
