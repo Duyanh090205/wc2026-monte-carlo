@@ -4,6 +4,8 @@ pip_cache/
 
 # Secrets
 .env
+.do/local.secrets.env
+.do/app.deploy.yaml
 credentials/
 *.pem
 *.key
