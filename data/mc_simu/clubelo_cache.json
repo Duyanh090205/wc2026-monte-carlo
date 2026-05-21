@@ -1,0 +1,1915 @@
+{
+  "AEK Athens": {
+    "as_of": "2026-12-31",
+    "country": "GRE",
+    "latest_elo": 1641.33203125,
+    "level": "1",
+    "rank": "82"
+  },
+  "AEL Limassol": {
+    "as_of": "2022-07-01",
+    "country": "CYP",
+    "latest_elo": 1413.00427246,
+    "level": "0",
+    "rank": "None"
+  },
+  "AGMK": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "AIK": {
+    "as_of": "2026-12-31",
+    "country": "SWE",
+    "latest_elo": 1381.11547852,
+    "level": "1",
+    "rank": "None"
+  },
+  "AZ": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Ajax": {
+    "as_of": "2026-12-31",
+    "country": "NED",
+    "latest_elo": 1579.30114746,
+    "level": "1",
+    "rank": "None"
+  },
+  "Al Ain": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al Bataeh": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Ahli": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Arabi": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Duhail": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Faisaly": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Gharafa": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Hilal": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Hussein": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Ittihad": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Karma": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Nassr": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Qadsiah": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Quwa Al-Jawiya": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Rayyan": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Sadd": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Sailiya": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Shabab": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Shahaniya": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Shamal": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Wakrah": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Wehdat": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Al-Zawraa": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Almere City": {
+    "as_of": "2025-07-05",
+    "country": "NED",
+    "latest_elo": 1349.18005371,
+    "level": "1",
+    "rank": "None"
+  },
+  "América": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Anderlecht": {
+    "as_of": "2026-12-31",
+    "country": "BEL",
+    "latest_elo": 1521.12145996,
+    "level": "1",
+    "rank": "None"
+  },
+  "Angers": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1543.15490723,
+    "level": "1",
+    "rank": "None"
+  },
+  "Arsenal": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 2059.56884766,
+    "level": "1",
+    "rank": "1"
+  },
+  "Astana": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Aston Villa": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1888.90869141,
+    "level": "1",
+    "rank": "10"
+  },
+  "Atalanta": {
+    "as_of": "2026-12-31",
+    "country": "ITA",
+    "latest_elo": 1776.57202148,
+    "level": "1",
+    "rank": "30"
+  },
+  "Athletic Bilbao": {
+    "as_of": "2026-12-31",
+    "country": "ESP",
+    "latest_elo": 1684.1574707,
+    "level": "1",
+    "rank": "60"
+  },
+  "Athletico Paranaense": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Atlanta United FC": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Atlas": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Atlético Madrid": {
+    "as_of": "2026-12-31",
+    "country": "ESP",
+    "latest_elo": 1844.45898438,
+    "level": "1",
+    "rank": "14"
+  },
+  "Atlético Mineiro": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Atlético Nacional": {
+    "as_of": "2026-12-31",
+    "country": "POR",
+    "latest_elo": 1438.05737305,
+    "level": "1",
+    "rank": "None"
+  },
+  "Atlético San Luis": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Auckland FC": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Austria Wien": {
+    "as_of": "2026-12-31",
+    "country": "AUT",
+    "latest_elo": 1398.94335938,
+    "level": "1",
+    "rank": "None"
+  },
+  "Auxerre": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1604.37695312,
+    "level": "1",
+    "rank": "100"
+  },
+  "Bahia": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Baniyas": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Baník Ostrava": {
+    "as_of": "2026-12-31",
+    "country": "CZE",
+    "latest_elo": 1346.5625,
+    "level": "1",
+    "rank": "None"
+  },
+  "Barcelona": {
+    "as_of": "2026-12-31",
+    "country": "ESP",
+    "latest_elo": 1969.25671387,
+    "level": "1",
+    "rank": "5"
+  },
+  "Barracas Central": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Bastia": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1381.44433594,
+    "level": "2",
+    "rank": "None"
+  },
+  "Bayer Leverkusen": {
+    "as_of": "2026-12-31",
+    "country": "GER",
+    "latest_elo": 1812.64086914,
+    "level": "1",
+    "rank": "22"
+  },
+  "Bayern Munich": {
+    "as_of": "2026-12-31",
+    "country": "GER",
+    "latest_elo": 2001.67089844,
+    "level": "1",
+    "rank": "2"
+  },
+  "Belgrano": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Benfica": {
+    "as_of": "2026-12-31",
+    "country": "POR",
+    "latest_elo": 1820.2097168,
+    "level": "1",
+    "rank": "21"
+  },
+  "Beşiktaş": {
+    "as_of": "2026-12-31",
+    "country": "TUR",
+    "latest_elo": 1517.77770996,
+    "level": "1",
+    "rank": "None"
+  },
+  "Birmingham City": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1504.22424316,
+    "level": "2",
+    "rank": "None"
+  },
+  "Boca Juniors": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Bologna": {
+    "as_of": "2026-12-31",
+    "country": "ITA",
+    "latest_elo": 1685.59570312,
+    "level": "1",
+    "rank": "59"
+  },
+  "Borussia Dortmund": {
+    "as_of": "2026-12-31",
+    "country": "GER",
+    "latest_elo": 1831.23657227,
+    "level": "1",
+    "rank": "18"
+  },
+  "Borussia Mönchengladbach": {
+    "as_of": "2026-12-31",
+    "country": "GER",
+    "latest_elo": 1625.19494629,
+    "level": "1",
+    "rank": "92"
+  },
+  "Botafogo": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Bournemouth": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1867.3157959,
+    "level": "1",
+    "rank": "11"
+  },
+  "Braga": {
+    "as_of": "2026-12-31",
+    "country": "POR",
+    "latest_elo": 1698.91113281,
+    "level": "1",
+    "rank": "54"
+  },
+  "Braintree Town": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Brentford": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1832.54870605,
+    "level": "1",
+    "rank": "17"
+  },
+  "Brighton & Hove Albion": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1861.28161621,
+    "level": "1",
+    "rank": "12"
+  },
+  "Brøndby": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Burgos": {
+    "as_of": "2026-12-31",
+    "country": "ESP",
+    "latest_elo": 1525.99768066,
+    "level": "2",
+    "rank": "None"
+  },
+  "Burnley": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1665.35021973,
+    "level": "1",
+    "rank": "66"
+  },
+  "Buxoro": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "CS Sfaxien": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Cagliari": {
+    "as_of": "2026-12-31",
+    "country": "ITA",
+    "latest_elo": 1572.5135498,
+    "level": "1",
+    "rank": "None"
+  },
+  "Celta Vigo": {
+    "as_of": "2026-12-31",
+    "country": "ESP",
+    "latest_elo": 1696.20996094,
+    "level": "1",
+    "rank": "56"
+  },
+  "Celtic": {
+    "as_of": "2026-12-31",
+    "country": "SCO",
+    "latest_elo": 1569.12597656,
+    "level": "1",
+    "rank": "None"
+  },
+  "Cercle Brugge": {
+    "as_of": "2026-12-31",
+    "country": "BEL",
+    "latest_elo": 1445.62524414,
+    "level": "1",
+    "rank": "None"
+  },
+  "Cerro Porteño": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Charleroi": {
+    "as_of": "2026-12-31",
+    "country": "BEL",
+    "latest_elo": 1503.52636719,
+    "level": "1",
+    "rank": "None"
+  },
+  "Chelsea": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1832.84155273,
+    "level": "1",
+    "rank": "16"
+  },
+  "Club Africain": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Club Brugge": {
+    "as_of": "2026-12-31",
+    "country": "BEL",
+    "latest_elo": 1743.64123535,
+    "level": "1",
+    "rank": "43"
+  },
+  "Colorado Springs Switchbacks FC": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Como": {
+    "as_of": "2026-12-31",
+    "country": "ITA",
+    "latest_elo": 1749.37097168,
+    "level": "1",
+    "rank": "39"
+  },
+  "Copenhagen": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Corinthians": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Coritiba": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Cremonese": {
+    "as_of": "2026-12-31",
+    "country": "ITA",
+    "latest_elo": 1525.73400879,
+    "level": "1",
+    "rank": "None"
+  },
+  "Cruz Azul": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Cruzeiro": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Crystal Palace": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1795.94396973,
+    "level": "1",
+    "rank": "26"
+  },
+  "Cultural Leonesa": {
+    "as_of": "2026-12-31",
+    "country": "ESP",
+    "latest_elo": 1362.62329102,
+    "level": "2",
+    "rank": "None"
+  },
+  "Daejeon Hana Citizen": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Deportes Tolima": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Derby County": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1536.3717041,
+    "level": "2",
+    "rank": "None"
+  },
+  "Dibba Al Fujairah": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Dinamo Samarqand": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Dynamo Makhachkala": {
+    "as_of": "2026-12-31",
+    "country": "RUS",
+    "latest_elo": 1339.20922852,
+    "level": "1",
+    "rank": "None"
+  },
+  "Dynamo Moscow": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Eintracht Frankfurt": {
+    "as_of": "2026-12-31",
+    "country": "GER",
+    "latest_elo": 1664.49072266,
+    "level": "1",
+    "rank": "67"
+  },
+  "El Paso Locomotive FC": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Erbil": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Espérance de Tunis": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Esteghlal": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Estudiantes": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "FC Augsburg": {
+    "as_of": "2026-12-31",
+    "country": "GER",
+    "latest_elo": 1654.68017578,
+    "level": "1",
+    "rank": "74"
+  },
+  "FC Cincinnati": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "FC Dallas": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "FC Seoul": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "FC St. Pauli": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "FC Tokyo": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Fenerbahçe": {
+    "as_of": "2026-12-31",
+    "country": "TUR",
+    "latest_elo": 1663.42553711,
+    "level": "1",
+    "rank": "69"
+  },
+  "Ferencváros": {
+    "as_of": "2026-12-31",
+    "country": "HUN",
+    "latest_elo": 1520.05041504,
+    "level": "1",
+    "rank": "None"
+  },
+  "Feyenoord": {
+    "as_of": "2026-12-31",
+    "country": "NED",
+    "latest_elo": 1595.95080566,
+    "level": "1",
+    "rank": "None"
+  },
+  "Flamengo": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Fulham": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1801.2076416,
+    "level": "1",
+    "rank": "24"
+  },
+  "Galatasaray": {
+    "as_of": "2026-12-31",
+    "country": "TUR",
+    "latest_elo": 1698.18347168,
+    "level": "1",
+    "rank": "55"
+  },
+  "Gangwon FC": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Gaziantep": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Genk": {
+    "as_of": "2026-12-31",
+    "country": "BEL",
+    "latest_elo": 1578.5949707,
+    "level": "1",
+    "rank": "None"
+  },
+  "Genoa": {
+    "as_of": "2026-12-31",
+    "country": "ITA",
+    "latest_elo": 1633.29602051,
+    "level": "1",
+    "rank": "88"
+  },
+  "Gent": {
+    "as_of": "2026-12-31",
+    "country": "BEL",
+    "latest_elo": 1494.28186035,
+    "level": "1",
+    "rank": "None"
+  },
+  "Getafe": {
+    "as_of": "2026-12-31",
+    "country": "ESP",
+    "latest_elo": 1667.22387695,
+    "level": "1",
+    "rank": "65"
+  },
+  "Gil Vicente": {
+    "as_of": "2026-12-31",
+    "country": "POR",
+    "latest_elo": 1510.08410645,
+    "level": "1",
+    "rank": "None"
+  },
+  "Girona": {
+    "as_of": "2026-12-31",
+    "country": "ESP",
+    "latest_elo": 1642.41088867,
+    "level": "1",
+    "rank": "80"
+  },
+  "Grêmio": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Guadalajara": {
+    "as_of": "2013-07-01",
+    "country": "ESP",
+    "latest_elo": 1507.27832031,
+    "level": "2",
+    "rank": "None"
+  },
+  "Górnik Zabrze": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Hamburger SV": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Hannover 96": {
+    "as_of": "2026-12-31",
+    "country": "GER",
+    "latest_elo": 1533.60070801,
+    "level": "2",
+    "rank": "None"
+  },
+  "Holstein Kiel": {
+    "as_of": "2026-12-31",
+    "country": "GER",
+    "latest_elo": 1473.01831055,
+    "level": "2",
+    "rank": "None"
+  },
+  "Hradec Králové": {
+    "as_of": "2026-12-31",
+    "country": "CZE",
+    "latest_elo": 1445.51147461,
+    "level": "1",
+    "rank": "None"
+  },
+  "Hull City": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1530.03881836,
+    "level": "2",
+    "rank": "None"
+  },
+  "Huracán": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "IFK Norrköping": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Independiente": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Independiente Rivadavia": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Independiente Santa Fe": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Independiente del Valle": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Inter Miami CF": {
+    "as_of": "2026-12-31",
+    "country": "ITA",
+    "latest_elo": 1901.2331543,
+    "level": "1",
+    "rank": "8"
+  },
+  "Inter Milan": {
+    "as_of": "2026-12-31",
+    "country": "ITA",
+    "latest_elo": 1901.2331543,
+    "level": "1",
+    "rank": "8"
+  },
+  "Internacional": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Internazionale": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Jagiellonia Białystok": {
+    "as_of": "2026-12-31",
+    "country": "POL",
+    "latest_elo": 1466.60534668,
+    "level": "1",
+    "rank": "None"
+  },
+  "Jeonbuk Hyundai Motors": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Juventus": {
+    "as_of": "2026-12-31",
+    "country": "ITA",
+    "latest_elo": 1793.69702148,
+    "level": "1",
+    "rank": "27"
+  },
+  "Juárez": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Karlsruher SC": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Kashima Antlers": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Kasımpaşa": {
+    "as_of": "2026-12-31",
+    "country": "TUR",
+    "latest_elo": 1369.13256836,
+    "level": "1",
+    "rank": "None"
+  },
+  "Khorazm": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Krasnodar": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "LASK": {
+    "as_of": "2026-12-31",
+    "country": "AUT",
+    "latest_elo": 1452.54577637,
+    "level": "1",
+    "rank": "None"
+  },
+  "LDU Quito": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Lanús": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Le Havre": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1562.78869629,
+    "level": "1",
+    "rank": "None"
+  },
+  "Lechia Gdańsk": {
+    "as_of": "2026-12-31",
+    "country": "POL",
+    "latest_elo": 1396.66125488,
+    "level": "1",
+    "rank": "None"
+  },
+  "Leeds United": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1800.64318848,
+    "level": "1",
+    "rank": "25"
+  },
+  "Lens": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1747.59729004,
+    "level": "1",
+    "rank": "42"
+  },
+  "Libertad": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Lille": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1761.54614258,
+    "level": "1",
+    "rank": "34"
+  },
+  "Liverpool": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1922.57275391,
+    "level": "1",
+    "rank": "6"
+  },
+  "Lokomotiv Moscow": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Lokomotiva Zagreb": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Lorient": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1654.44018555,
+    "level": "1",
+    "rank": "75"
+  },
+  "Los Angeles FC": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Lugano": {
+    "as_of": "2026-12-31",
+    "country": "SUI",
+    "latest_elo": 1450.05957031,
+    "level": "1",
+    "rank": "None"
+  },
+  "Lyon": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1749.16674805,
+    "level": "1",
+    "rank": "40"
+  },
+  "Mainz 05": {
+    "as_of": "2026-12-31",
+    "country": "GER",
+    "latest_elo": 1664.46142578,
+    "level": "1",
+    "rank": "68"
+  },
+  "Mallorca": {
+    "as_of": "2026-12-31",
+    "country": "ESP",
+    "latest_elo": 1645.51708984,
+    "level": "1",
+    "rank": "79"
+  },
+  "Malmö FF": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Manchester City": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1981.04492188,
+    "level": "1",
+    "rank": "3"
+  },
+  "Manchester United": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1893.57849121,
+    "level": "1",
+    "rank": "9"
+  },
+  "Maribor": {
+    "as_of": "2026-12-31",
+    "country": "SVN",
+    "latest_elo": 1334.22265625,
+    "level": "1",
+    "rank": "None"
+  },
+  "Marseille": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1705.50695801,
+    "level": "1",
+    "rank": "52"
+  },
+  "Midtjylland": {
+    "as_of": "2026-12-31",
+    "country": "DEN",
+    "latest_elo": 1687.38391113,
+    "level": "1",
+    "rank": "58"
+  },
+  "Milan": {
+    "as_of": "2026-12-31",
+    "country": "ITA",
+    "latest_elo": 1757.29077148,
+    "level": "1",
+    "rank": "36"
+  },
+  "Millwall": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1601.57678223,
+    "level": "2",
+    "rank": "None"
+  },
+  "Minnesota United FC": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Mjällby AIF": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Mladá Boleslav": {
+    "as_of": "2026-12-31",
+    "country": "CZE",
+    "latest_elo": 1381.1496582,
+    "level": "1",
+    "rank": "None"
+  },
+  "Monaco": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1723.99060059,
+    "level": "1",
+    "rank": "46"
+  },
+  "Monterrey": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Motherwell": {
+    "as_of": "2026-12-31",
+    "country": "SCO",
+    "latest_elo": 1378.9876709,
+    "level": "1",
+    "rank": "None"
+  },
+  "NEC": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Nacional": {
+    "as_of": "2026-12-31",
+    "country": "POR",
+    "latest_elo": 1438.05737305,
+    "level": "1",
+    "rank": "None"
+  },
+  "Nancy": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1358.45678711,
+    "level": "2",
+    "rank": "None"
+  },
+  "Nantes": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1541.57055664,
+    "level": "1",
+    "rank": "None"
+  },
+  "Napoli": {
+    "as_of": "2026-12-31",
+    "country": "ITA",
+    "latest_elo": 1771.6829834,
+    "level": "1",
+    "rank": "32"
+  },
+  "Nasaf": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Navbahor": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Neftchi": {
+    "as_of": "2024-07-05",
+    "country": "AZE",
+    "latest_elo": 1353.19946289,
+    "level": "0",
+    "rank": "None"
+  },
+  "New York Red Bulls": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Newcastle Jets": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1839.12365723,
+    "level": "1",
+    "rank": "15"
+  },
+  "Newcastle United": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1839.12365723,
+    "level": "1",
+    "rank": "15"
+  },
+  "Newell's Old Boys": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Nice": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1585.36975098,
+    "level": "1",
+    "rank": "None"
+  },
+  "Norwich City": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1557.51953125,
+    "level": "2",
+    "rank": "None"
+  },
+  "Nottingham Forest": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1824.39367676,
+    "level": "1",
+    "rank": "20"
+  },
+  "Olimpia": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Orlando City SC": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "PAOK": {
+    "as_of": "2026-12-31",
+    "country": "GRE",
+    "latest_elo": 1606.00720215,
+    "level": "1",
+    "rank": "98"
+  },
+  "PEC Zwolle": {
+    "as_of": "2026-12-31",
+    "country": "NED",
+    "latest_elo": 1395.98156738,
+    "level": "1",
+    "rank": "None"
+  },
+  "PSV Eindhoven": {
+    "as_of": "2026-12-31",
+    "country": "NED",
+    "latest_elo": 1753.94689941,
+    "level": "1",
+    "rank": "38"
+  },
+  "Pachuca": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Pafos": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Pakhtakor": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Palmeiras": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Panathinaikos": {
+    "as_of": "2026-12-31",
+    "country": "GRE",
+    "latest_elo": 1546.20703125,
+    "level": "1",
+    "rank": "None"
+  },
+  "Pardubice": {
+    "as_of": "2026-12-31",
+    "country": "CZE",
+    "latest_elo": 1346.96411133,
+    "level": "1",
+    "rank": "None"
+  },
+  "Paris Saint-Germain": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1979.07189941,
+    "level": "1",
+    "rank": "4"
+  },
+  "Parma": {
+    "as_of": "2026-12-31",
+    "country": "ITA",
+    "latest_elo": 1595.4987793,
+    "level": "1",
+    "rank": "None"
+  },
+  "Persepolis": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Peterborough United": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Philadelphia Union": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Pisa": {
+    "as_of": "2026-12-31",
+    "country": "ITA",
+    "latest_elo": 1462.53222656,
+    "level": "1",
+    "rank": "None"
+  },
+  "Port Vale": {
+    "as_of": "2000-07-03",
+    "country": "ENG",
+    "latest_elo": 1378.04248047,
+    "level": "2",
+    "rank": "None"
+  },
+  "Portland Timbers": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Porto": {
+    "as_of": "2026-12-31",
+    "country": "POR",
+    "latest_elo": 1804.45300293,
+    "level": "1",
+    "rank": "23"
+  },
+  "Portsmouth": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1496.47387695,
+    "level": "2",
+    "rank": "None"
+  },
+  "Puebla": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Pyramids": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Qatar SC": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "RB Leipzig": {
+    "as_of": "2026-12-31",
+    "country": "GER",
+    "latest_elo": 1778.13537598,
+    "level": "1",
+    "rank": "29"
+  },
+  "Racing": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Racing Santander": {
+    "as_of": "2026-12-31",
+    "country": "ESP",
+    "latest_elo": 1571.1315918,
+    "level": "2",
+    "rank": "None"
+  },
+  "Raja Casablanca": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Rangers": {
+    "as_of": "2026-12-31",
+    "country": "SCO",
+    "latest_elo": 1510.05310059,
+    "level": "1",
+    "rank": "None"
+  },
+  "Real Betis": {
+    "as_of": "2026-12-31",
+    "country": "ESP",
+    "latest_elo": 1747.84936523,
+    "level": "1",
+    "rank": "41"
+  },
+  "Real Madrid": {
+    "as_of": "2026-12-31",
+    "country": "ESP",
+    "latest_elo": 1918.62353516,
+    "level": "1",
+    "rank": "7"
+  },
+  "Real Sociedad": {
+    "as_of": "2026-12-31",
+    "country": "ESP",
+    "latest_elo": 1680.43383789,
+    "level": "1",
+    "rank": "61"
+  },
+  "Red Bull Bragantino": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Red Bull Salzburg": {
+    "as_of": "2026-12-31",
+    "country": "AUT",
+    "latest_elo": 1482.40722656,
+    "level": "1",
+    "rank": "None"
+  },
+  "Red Star Belgrade": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Reims": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1541.02563477,
+    "level": "2",
+    "rank": "None"
+  },
+  "Rennes": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1725.45739746,
+    "level": "1",
+    "rank": "45"
+  },
+  "Rijeka": {
+    "as_of": "2026-12-31",
+    "country": "CRO",
+    "latest_elo": 1387.4979248,
+    "level": "1",
+    "rank": "None"
+  },
+  "River Plate": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Roma": {
+    "as_of": "2026-12-31",
+    "country": "ITA",
+    "latest_elo": 1782.10266113,
+    "level": "1",
+    "rank": "28"
+  },
+  "Rosario Central": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "SC Freiburg": {
+    "as_of": "2026-12-31",
+    "country": "GER",
+    "latest_elo": 1719.99194336,
+    "level": "1",
+    "rank": "48"
+  },
+  "Sabah": {
+    "as_of": "2026-12-31",
+    "country": "AZE",
+    "latest_elo": 1311.19018555,
+    "level": "0",
+    "rank": "None"
+  },
+  "Saint-Étienne": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1506.8918457,
+    "level": "2",
+    "rank": "None"
+  },
+  "Sampdoria": {
+    "as_of": "2026-12-31",
+    "country": "ITA",
+    "latest_elo": 1390.78149414,
+    "level": "2",
+    "rank": "None"
+  },
+  "San Lorenzo": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Sanfrecce Hiroshima": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Santos": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Santos Laguna": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Sassuolo": {
+    "as_of": "2026-12-31",
+    "country": "ITA",
+    "latest_elo": 1641.79675293,
+    "level": "1",
+    "rank": "81"
+  },
+  "Schalke 04": {
+    "as_of": "2026-12-31",
+    "country": "GER",
+    "latest_elo": 1518.12207031,
+    "level": "2",
+    "rank": "None"
+  },
+  "Selangor": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Servette": {
+    "as_of": "2026-12-31",
+    "country": "SUI",
+    "latest_elo": 1417.44885254,
+    "level": "1",
+    "rank": "None"
+  },
+  "Shabab Al-Ordon": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Sharjah": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Sheffield United": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1543.7388916,
+    "level": "2",
+    "rank": "None"
+  },
+  "Sigma Olomouc": {
+    "as_of": "2026-12-31",
+    "country": "CZE",
+    "latest_elo": 1371.94616699,
+    "level": "1",
+    "rank": "None"
+  },
+  "Silkeborg": {
+    "as_of": "2026-12-31",
+    "country": "DEN",
+    "latest_elo": 1445.33190918,
+    "level": "1",
+    "rank": "None"
+  },
+  "Sint-Truiden": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Slaven Belupo": {
+    "as_of": "2026-12-31",
+    "country": "CRO",
+    "latest_elo": 1282.4810791,
+    "level": "1",
+    "rank": "None"
+  },
+  "Slavia Prague": {
+    "as_of": "2026-12-31",
+    "country": "CZE",
+    "latest_elo": 1654.11645508,
+    "level": "1",
+    "rank": "76"
+  },
+  "Slovan Liberec": {
+    "as_of": "2026-12-31",
+    "country": "CZE",
+    "latest_elo": 1431.40258789,
+    "level": "1",
+    "rank": "None"
+  },
+  "Sochaux": {
+    "as_of": "2023-07-01",
+    "country": "FRA",
+    "latest_elo": 1398.35412598,
+    "level": "2",
+    "rank": "None"
+  },
+  "Sogdiana": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Sparta Prague": {
+    "as_of": "2026-12-31",
+    "country": "CZE",
+    "latest_elo": 1547.84741211,
+    "level": "1",
+    "rank": "None"
+  },
+  "Sporting CP": {
+    "as_of": "2026-12-31",
+    "country": "POR",
+    "latest_elo": 1845.68908691,
+    "level": "1",
+    "rank": "13"
+  },
+  "Stoke City": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1449.89013672,
+    "level": "2",
+    "rank": "None"
+  },
+  "Strasbourg": {
+    "as_of": "2026-12-31",
+    "country": "FRA",
+    "latest_elo": 1702.43481445,
+    "level": "1",
+    "rank": "53"
+  },
+  "Sunderland": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1705.67626953,
+    "level": "1",
+    "rank": "51"
+  },
+  "Surkhon": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Swansea City": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1533.44384766,
+    "level": "2",
+    "rank": "None"
+  },
+  "São Paulo": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "TSG Hoffenheim": {
+    "as_of": "2026-12-31",
+    "country": "GER",
+    "latest_elo": 1720.29016113,
+    "level": "1",
+    "rank": "47"
+  },
+  "Talleres": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Tatran Prešov": {
+    "as_of": "1995-07-01",
+    "country": "SLK",
+    "latest_elo": 1456.50610352,
+    "level": "0",
+    "rank": "None"
+  },
+  "Tijuana": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Toluca": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Toronto FC": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Tottenham Hotspur": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1771.79248047,
+    "level": "1",
+    "rank": "31"
+  },
+  "Trabzonspor": {
+    "as_of": "2026-12-31",
+    "country": "TUR",
+    "latest_elo": 1551.96044922,
+    "level": "1",
+    "rank": "None"
+  },
+  "Tractor": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "UANL": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "UNAM": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "US Monastir": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Udinese": {
+    "as_of": "2026-12-31",
+    "country": "ITA",
+    "latest_elo": 1662.98327637,
+    "level": "1",
+    "rank": "70"
+  },
+  "Ulsan HD": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Union Berlin": {
+    "as_of": "2026-12-31",
+    "country": "GER",
+    "latest_elo": 1605.48486328,
+    "level": "1",
+    "rank": "99"
+  },
+  "Union Saint-Gilloise": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Universidad de Chile": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Universitatea Cluj": {
+    "as_of": "2026-12-31",
+    "country": "ROM",
+    "latest_elo": 1433.61633301,
+    "level": "1",
+    "rank": "None"
+  },
+  "Valencia": {
+    "as_of": "2026-12-31",
+    "country": "ESP",
+    "latest_elo": 1670.27478027,
+    "level": "1",
+    "rank": "63"
+  },
+  "Vancouver Whitecaps FC": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Vasco da Gama": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "VfB Stuttgart": {
+    "as_of": "2026-12-31",
+    "country": "GER",
+    "latest_elo": 1767.41186523,
+    "level": "1",
+    "rank": "33"
+  },
+  "VfL Wolfsburg": {
+    "as_of": "2026-12-31",
+    "country": "GER",
+    "latest_elo": 1589.85327148,
+    "level": "1",
+    "rank": "None"
+  },
+  "Viking": {
+    "as_of": "2026-12-31",
+    "country": "NOR",
+    "latest_elo": 1631.9107666,
+    "level": "1",
+    "rank": "90"
+  },
+  "Viktoria Plzeň": {
+    "as_of": "2026-12-31",
+    "country": "CZE",
+    "latest_elo": 1556.39916992,
+    "level": "1",
+    "rank": "None"
+  },
+  "Villarreal": {
+    "as_of": "2026-12-31",
+    "country": "ESP",
+    "latest_elo": 1754.76806641,
+    "level": "1",
+    "rank": "37"
+  },
+  "Violette": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Vizela": {
+    "as_of": "2024-07-05",
+    "country": "POR",
+    "latest_elo": 1368.49206543,
+    "level": "1",
+    "rank": "None"
+  },
+  "Vélez Sarsfield": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Wellington Phoenix": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Werder Bremen": {
+    "as_of": "2026-12-31",
+    "country": "GER",
+    "latest_elo": 1613.83959961,
+    "level": "1",
+    "rank": "96"
+  },
+  "West Ham United": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1758.39733887,
+    "level": "1",
+    "rank": "35"
+  },
+  "Western Sydney Wanderers": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Wolverhampton Wanderers": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1673.53796387,
+    "level": "1",
+    "rank": "62"
+  },
+  "Wrexham": {
+    "as_of": "2026-12-31",
+    "country": "ENG",
+    "latest_elo": 1524.61743164,
+    "level": "2",
+    "rank": "None"
+  },
+  "Young Boys": {
+    "as_of": "2026-12-31",
+    "country": "SUI",
+    "latest_elo": 1431.359375,
+    "level": "1",
+    "rank": "None"
+  },
+  "Zenit Saint Petersburg": {
+    "as_of": "2026-12-31",
+    "country": "RUS",
+    "latest_elo": 1657.19775391,
+    "level": "1",
+    "rank": "73"
+  },
+  "Zhejiang FC": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Zulte Waregem": {
+    "as_of": "2026-12-31",
+    "country": "BEL",
+    "latest_elo": 1430.47912598,
+    "level": "1",
+    "rank": "None"
+  },
+  "_meta": {
+    "fetched_at": "2026-05-18 00:40:30 UTC",
+    "note": "Cache populated lazily by get_clubelo() calls.",
+    "source": "http://api.clubelo.com"
+  },
+  "de": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "Çaykur Rizespor": {
+    "as_of": "2026-12-31",
+    "country": "TUR",
+    "latest_elo": 1400.7421875,
+    "level": "1",
+    "rank": "None"
+  },
+  "Étoile du Sahel": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  },
+  "İstanbul Başakşehir": {
+    "as_of": "",
+    "latest_elo": null,
+    "note": "not found"
+  }
+}

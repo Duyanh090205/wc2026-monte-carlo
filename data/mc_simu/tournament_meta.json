@@ -1,0 +1,58 @@
+{
+  "_schema": "host_countries + host_confederation per tournament label. venue_country read per-row from CSV `country` column. Keyed by `f'{tournament} {year}'` where year is the actual year played (Euro 2020 → 2021 due to COVID delay).",
+  "FIFA World Cup 2002": {
+    "host_countries": ["South Korea", "Japan"],
+    "host_confederation": "AFC"
+  },
+  "FIFA World Cup 2006": {
+    "host_countries": ["Germany"],
+    "host_confederation": "UEFA"
+  },
+  "FIFA World Cup 2010": {
+    "host_countries": ["South Africa"],
+    "host_confederation": "CAF"
+  },
+  "FIFA World Cup 2014": {
+    "host_countries": ["Brazil"],
+    "host_confederation": "CONMEBOL"
+  },
+  "FIFA World Cup 2018": {
+    "host_countries": ["Russia"],
+    "host_confederation": "UEFA"
+  },
+  "FIFA World Cup 2022": {
+    "host_countries": ["Qatar"],
+    "host_confederation": "AFC"
+  },
+  "UEFA Euro 2004": {
+    "host_countries": ["Portugal"],
+    "host_confederation": "UEFA"
+  },
+  "UEFA Euro 2008": {
+    "host_countries": ["Austria", "Switzerland"],
+    "host_confederation": "UEFA"
+  },
+  "UEFA Euro 2012": {
+    "host_countries": ["Poland", "Ukraine"],
+    "host_confederation": "UEFA"
+  },
+  "UEFA Euro 2016": {
+    "host_countries": ["France"],
+    "host_confederation": "UEFA"
+  },
+  "UEFA Euro 2020": {
+    "host_countries": [
+      "England", "Scotland", "Denmark", "Netherlands", "Germany",
+      "Spain", "Italy", "Hungary", "Romania", "Russia", "Azerbaijan"
+    ],
+    "host_confederation": "UEFA"
+  },
+  "UEFA Euro 2024": {
+    "host_countries": ["Germany"],
+    "host_confederation": "UEFA"
+  },
+  "FIFA World Cup 2026": {
+    "host_countries": ["United States", "Mexico", "Canada"],
+    "host_confederation": "CONCACAF"
+  }
+}
