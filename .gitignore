@@ -65,15 +65,21 @@ data/mc_simu/loto_cv_*.csv
 data/mc_simu/replay_*
 
 # Internal audit + preliminary report docs — kept local, not pushed.
-mc_simu/audit_overrides.md
-mc_simu/audit_report.md
-mc_simu/phase0_audit_report.md
-mc_simu/preliminary_report.md
+# (Moved under mc_simu/audits/ — scope*.md and before_world_cup_audit.md in that
+#  folder are NOT ignored and remain trackable.)
+mc_simu/audits/audit_overrides.md
+mc_simu/audits/audit_report.md
+mc_simu/audits/phase0_audit_report.md
+mc_simu/audits/preliminary_report.md
 mc_simu/preliminary_report.pptx
 mc_simu/archive/
 
+# Generated figures/diagrams — regenerated locally, not pushed (ship code + inputs).
+mc_simu/figures/
+
 # ── Claude session files ───────────────────────────────────────────────────────
 .claude/
+CLAUDE.md
 
 # ── Scheduler script (local machine config) ───────────────────────────────────
 register_scheduler.ps1
