@@ -18,7 +18,12 @@ st.set_page_config(page_title="MC vs Market — WC2026", layout="wide")
 
 
 def _cred(name):
-    return st.secrets.get(name, os.environ.get(name, ""))
+    try:
+        if name in st.secrets:
+            return st.secrets[name]
+    except Exception:  # no secrets.toml at all -> fall through to env
+        pass
+    return os.environ.get(name, "")
 
 
 LOCAL_CSV = os.path.join(os.path.dirname(__file__), "..", "data", "mc_simu", "daily_log.csv")
@@ -77,16 +82,16 @@ for i, t in enumerate(teams):
                     mode="markers", marker=dict(color=c, symbol="x", size=9),
                     showlegend=False)
 fig.update_layout(height=480, yaxis_title="champion prob (%)", hovermode="x unified")
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width='stretch')
 
 st.subheader("Today's edge board (model − market)")
 board = latest[["team", "model_pct", "consensus_pct", "abs_pp", "rel_pct"]].copy()
 board = board.reindex(board["abs_pp"].abs().sort_values(ascending=False).index)
-st.dataframe(board, use_container_width=True, hide_index=True, height=420)
+st.dataframe(board, width='stretch', hide_index=True, height=420)
 
 st.subheader("Model–market distance per day (is our bias stable?)")
 daily = df.groupby("date").apply(
     lambda g: (g["model_pct"] - g["consensus_pct"]).abs().sum(), include_groups=False
 ).rename("L1 (pp)").reset_index()
 st.plotly_chart(px.line(daily, x="date", y="L1 (pp)", markers=True, height=300),
-                use_container_width=True)
+                width='stretch')
