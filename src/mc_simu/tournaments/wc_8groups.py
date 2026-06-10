@@ -86,6 +86,10 @@ LATER_ROUNDS: list[tuple[int, int, int]] = [
     (15, 13, 14),
 ]
 
+# Bracket level of each KO match_id — used by survivor-set conditioning (backtest).
+KO_ROUND_OF = {**{i: "R16" for i in range(1, 9)}, 9: "QF", 10: "QF", 11: "QF", 12: "QF",
+               13: "SF", 14: "SF", 15: "Final"}
+
 
 # ── Name aliases (modern → elo_history canonical) ────────────────────────────
 
@@ -306,17 +310,33 @@ def build_sim_context(
 def simulate_one(
     sim: WC8GroupsSimContext,
     rng: np.random.Generator,
+    group_scores: dict | None = None,
+    survivors: dict | None = None,
 ) -> tuple[str, dict[str, str]]:
-    # 1. Sim 48 group matches (8 groups × 6)
+    """One MC iteration. Optional conditioning for backtest/daily rerun:
+        group_scores: {frozenset({home, away}): {team: goals}} — lock played group matches.
+        survivors:    {round_label: set(teams that advanced past that round)} — lock KO
+                      by who really survived each round, NOT by matchup. Robust to bracket
+                      / tiebreaker quirks (e.g. WC2018 group H decided on fair-play, which
+                      the model can't reproduce): a team absent from a round's survivor set
+                      always loses that round's match; the sole survivor always wins.
+    Empty/None = full unconditioned sim.
+    """
+    group_scores = group_scores or {}
+    survivors = survivors or {}
+
+    # 1. Sim 48 group matches (8 groups × 6); lock real scores for played fixtures
     matches_by_group: dict[str, list[GroupMatch]] = {}
     for letter in GROUP_LETTERS:
         scores = sample_scores_batch(sim.group_cdfs_per_group[letter], rng)
         pairs = sim.group_team_pairs[letter]
-        matches_by_group[letter] = [
-            GroupMatch(home_team=h, away_team=a,
-                       home_goals=int(scores[i, 0]), away_goals=int(scores[i, 1]))
-            for i, (h, a) in enumerate(pairs)
-        ]
+        gm: list[GroupMatch] = []
+        for i, (h, a) in enumerate(pairs):
+            real = group_scores.get(frozenset((h, a)))
+            hg = real[h] if real else int(scores[i, 0])
+            ag = real[a] if real else int(scores[i, 1])
+            gm.append(GroupMatch(home_team=h, away_team=a, home_goals=hg, away_goals=ag))
+        matches_by_group[letter] = gm
 
     # 2. Rank each group → winner + runner-up
     winners: dict[str, str] = {}
@@ -340,21 +360,22 @@ def simulate_one(
             return runners_up[key]
         raise ValueError(f"Unknown source kind: {kind}")
 
+    def _ko(match_id: int, a: str, b: str) -> str:
+        S = survivors.get(KO_ROUND_OF[match_id])
+        if S is not None:
+            if a in S and b not in S:
+                return a
+            if b in S and a not in S:
+                return b
+        return sample_knockout_winner(a, b, sim.ko_advance[(a, b)], rng)
+
     match_winners: dict[int, str] = {}
     for match_id, left, right in R16_BRACKET:
-        team_a = resolve(left)
-        team_b = resolve(right)
-        match_winners[match_id] = sample_knockout_winner(
-            team_a, team_b, sim.ko_advance[(team_a, team_b)], rng,
-        )
+        match_winners[match_id] = _ko(match_id, resolve(left), resolve(right))
 
     # 4. QF / SF / Final
     for match_id, prev_left, prev_right in LATER_ROUNDS:
-        team_a = match_winners[prev_left]
-        team_b = match_winners[prev_right]
-        match_winners[match_id] = sample_knockout_winner(
-            team_a, team_b, sim.ko_advance[(team_a, team_b)], rng,
-        )
+        match_winners[match_id] = _ko(match_id, match_winners[prev_left], match_winners[prev_right])
 
     champion = match_winners[15]
     return champion, winners
@@ -369,6 +390,8 @@ def run_monte_carlo(
     seed: int = 42,
     progress: bool = False,
     predictor: Predictor | None = None,
+    group_scores: dict | None = None,
+    survivors: dict | None = None,
 ) -> dict[str, Any]:
     sim = build_sim_context(bundle, predictor=predictor)
     rng = np.random.default_rng(seed)
@@ -387,7 +410,7 @@ def run_monte_carlo(
             pass
 
     for _ in iterator:
-        champion, group_winners = simulate_one(sim, rng)
+        champion, group_winners = simulate_one(sim, rng, group_scores, survivors)
         champion_counter[champion] += 1
         for g, w in group_winners.items():
             group_winner_counter[g][w] += 1

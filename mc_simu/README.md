@@ -138,7 +138,7 @@ mc_simu/
 ├── mc_simu.md            ← internal implementation plan (full phase log)
 └── phases/               ← per-phase design notes
 
-src/mc_simu/              ← simulator code (27 modules)
+src/mc_simu/              ← simulator code (39 modules)
 ├── elo.py                ← Elo engine (rating updates, MoV, K-factor)
 ├── single_game.py        ← predict_match — Elo → λ → Poisson grid → W/D/L
 ├── simulator.py          ← MC tournament harness (vectorized hot path)
@@ -146,7 +146,7 @@ src/mc_simu/              ← simulator code (27 modules)
 ├── tournaments/          ← 4 bracket adapters (WC2026, WC 8-group, Euro 24/16)
 └── ...                   ← data loaders, scrapers, validators
 
-tests/mc_simu/            ← 17 test files + 3 audit scripts
+tests/mc_simu/            ← 17 test files + 4 audit scripts
 
 data/mc_simu/             ← committed inputs (no results)
 ├── matches_1998_2026.csv ← filtered match history (4.5 MB, post-1998)

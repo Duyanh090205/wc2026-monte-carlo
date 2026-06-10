@@ -63,6 +63,8 @@ data/mc_simu/phase3_baselines/
 data/mc_simu/mc_wc2026_*.csv
 data/mc_simu/loto_cv_*.csv
 data/mc_simu/replay_*
+data/mc_simu/_*.json
+data/mc_simu/daily_log.csv
 
 # Internal audit + preliminary report docs — kept local, not pushed.
 # (Moved under mc_simu/audits/ — scope*.md and before_world_cup_audit.md in that
@@ -71,7 +73,7 @@ mc_simu/audits/audit_overrides.md
 mc_simu/audits/audit_report.md
 mc_simu/audits/phase0_audit_report.md
 mc_simu/audits/preliminary_report.md
-mc_simu/preliminary_report.pptx
+mc_simu/presentation/
 mc_simu/archive/
 
 # Generated figures/diagrams — regenerated locally, not pushed (ship code + inputs).
@@ -80,6 +82,10 @@ mc_simu/figures/
 # ── Claude session files ───────────────────────────────────────────────────────
 .claude/
 CLAUDE.md
+
+# ── Personal working files (local only) ───────────────────────────────────────
+/TASKS.md
+/dashboard.html
 
 # ── Scheduler script (local machine config) ───────────────────────────────────
 register_scheduler.ps1
@@ -110,3 +116,6 @@ Thumbs.db
 
 # ── Stray artifact files ──────────────────────────────────────────────────────
 compass_artifact_*.md
+
+# Transfermarkt raw dataset cache (dcaribou R2) — regenerate locally, do not commit
+data/mc_simu/cache/tmdata/

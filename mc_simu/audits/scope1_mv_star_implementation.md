@@ -284,7 +284,7 @@ Residual disagreement is the **alpha target** — model should diverge from mark
 - [src/mc_simu/mv_blend.py](../src/mc_simu/mv_blend.py) — z-score blend module
 - [src/mc_simu/star_presence.py](../src/mc_simu/star_presence.py) — star bonus module
 - [src/mc_simu/scrape_transfermarkt_mv.py](../src/mc_simu/scrape_transfermarkt_mv.py) — Transfermarkt scraper
-- [src/mc_simu/validate_phase1_with_mv.py](../src/mc_simu/validate_phase1_with_mv.py) — Brier check w/ MV+Star
+- ~~src/mc_simu/validate_phase1_with_mv.py~~ — interim Brier check, **superseded 2026-06-09** by [validate_mv_history.py](../src/mc_simu/validate_mv_history.py) (point-in-time historical MV)
 
 ### Modified
 - [src/mc_simu/tune_to_market.py](../src/mc_simu/tune_to_market.py)

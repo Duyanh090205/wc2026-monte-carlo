@@ -24,7 +24,7 @@ from __future__ import annotations
 import json
 import sys
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -111,6 +111,62 @@ LATER_ROUNDS: list[tuple[int, int, int]] = [
     # Final (M104) — M103 (3rd-place play-off) is intentionally skipped in v1
     (104, 101, 102),
 ]
+
+
+# ── Conditioning (daily rerun): lock played results, re-sim the remainder ─────
+
+
+@dataclass
+class PlayedResults:
+    """Real results already played, locked into the sim for a conditional rerun.
+
+    The model (ratings/params) stays STATIC — conditioning only plugs real
+    outcomes into the bracket and re-rolls the unplayed matches. Empty =
+    unconditioned full sim (original behaviour).
+
+    group_scores: {frozenset({home, away}): {team: goals}} — orientation-agnostic.
+    ko_winners:   {fixture_match_id (73-104): winner_team}.
+    """
+
+    group_scores: dict[frozenset, dict[str, int]] = field(default_factory=dict)
+    ko_winners: dict[int, str] = field(default_factory=dict)
+
+
+def load_played_results(csv_path: Path) -> PlayedResults:
+    """Load played WC2026 matches for a conditional rerun.
+
+    CSV columns: stage ('group'|'ko'), match_id (KO only), home_team, away_team,
+    home_goals, away_goals, winner (KO only — needed when penalties decide a tie).
+    Missing file -> empty (unconditioned).
+    """
+    pr = PlayedResults()
+    if not csv_path.exists():
+        return pr
+    for r in pd.read_csv(csv_path).to_dict("records"):
+        if str(r["stage"]).strip().lower() == "group":
+            h, a = r["home_team"], r["away_team"]
+            pr.group_scores[frozenset((h, a))] = {h: int(r["home_goals"]), a: int(r["away_goals"])}
+        else:
+            w = r.get("winner")
+            if w is None or (isinstance(w, float) and pd.isna(w)):
+                w = r["home_team"] if r["home_goals"] > r["away_goals"] else r["away_team"]
+            pr.ko_winners[int(r["match_id"])] = str(w)
+    return pr
+
+
+def _locked_winner(played: PlayedResults, match_id: int, team_a: str, team_b: str) -> str:
+    """Return the locked KO winner, asserting it is one of the match's participants.
+
+    Guards against incoherent input (a locked downstream result without its
+    upstream) — which would otherwise surface as a cryptic self-pairing KeyError.
+    """
+    w = played.ko_winners[match_id]
+    if w not in (team_a, team_b):
+        raise ValueError(
+            f"played: KO match {match_id} winner {w!r} is not a participant "
+            f"({team_a} vs {team_b}) — lock upstream results first (chronological order)"
+        )
+    return w
 
 
 # ── Data loading ──────────────────────────────────────────────────────────────
@@ -213,6 +269,7 @@ def simulate_tournament(
     ko_advance: dict[tuple[str, str], float],
     fifa_ranking: dict[str, float],
     rng: np.random.Generator,
+    played: PlayedResults | None = None,
 ) -> tuple[str, dict[str, str]]:
     """One MC iteration. Returns (champion, group_winners_by_letter).
 
@@ -226,20 +283,20 @@ def simulate_tournament(
         fifa_ranking: {team: score} used as final-final tiebreaker in standings
         rng: np.random.default_rng(seed)
     """
-    # --- 1. Sim 72 group matches; assemble per-group match list ---
+    played = played or PlayedResults()
+
+    # --- 1. Sim 72 group matches; lock real scores for played fixtures ---
     matches_by_group: dict[str, list[GroupMatch]] = {}
     for group_letter in GROUP_LETTERS:
         scores = sample_scores_batch(group_cdfs_per_group[group_letter], rng)  # (6, 2)
         pairs = group_team_pairs[group_letter]
-        matches_by_group[group_letter] = [
-            GroupMatch(
-                home_team=h,
-                away_team=a,
-                home_goals=int(scores[i, 0]),
-                away_goals=int(scores[i, 1]),
-            )
-            for i, (h, a) in enumerate(pairs)
-        ]
+        group_matches: list[GroupMatch] = []
+        for i, (h, a) in enumerate(pairs):
+            real = played.group_scores.get(frozenset((h, a)))
+            hg = real[h] if real else int(scores[i, 0])
+            ag = real[a] if real else int(scores[i, 1])
+            group_matches.append(GroupMatch(home_team=h, away_team=a, home_goals=hg, away_goals=ag))
+        matches_by_group[group_letter] = group_matches
 
     # --- 2. Rank each group; capture winner/runner-up/third + per-team stats ---
     winners: dict[str, str] = {}
@@ -281,19 +338,25 @@ def simulate_tournament(
 
     match_winners: dict[int, str] = {}
 
-    # R32 matches
+    # R32 matches (lock decided ones)
     for match_id, left_src, right_src in R32_BRACKET:
         team_a = resolve_source(left_src)
         team_b = resolve_source(right_src)
-        p_advance_a = ko_advance[(team_a, team_b)]
-        match_winners[match_id] = sample_knockout_winner(team_a, team_b, p_advance_a, rng)
+        if match_id in played.ko_winners:
+            match_winners[match_id] = _locked_winner(played, match_id, team_a, team_b)
+        else:
+            p_advance_a = ko_advance[(team_a, team_b)]
+            match_winners[match_id] = sample_knockout_winner(team_a, team_b, p_advance_a, rng)
 
-    # R16 / QF / SF / Final
+    # R16 / QF / SF / Final (lock decided ones)
     for match_id, prev_left, prev_right in LATER_ROUNDS:
         team_a = match_winners[prev_left]
         team_b = match_winners[prev_right]
-        p_advance_a = ko_advance[(team_a, team_b)]
-        match_winners[match_id] = sample_knockout_winner(team_a, team_b, p_advance_a, rng)
+        if match_id in played.ko_winners:
+            match_winners[match_id] = _locked_winner(played, match_id, team_a, team_b)
+        else:
+            p_advance_a = ko_advance[(team_a, team_b)]
+            match_winners[match_id] = sample_knockout_winner(team_a, team_b, p_advance_a, rng)
 
     champion = match_winners[104]
     return champion, winners
@@ -395,6 +458,7 @@ def run_monte_carlo(
     seed: int = 42,
     progress: bool = True,
     predictor: Predictor | None = None,
+    played: PlayedResults | None = None,
 ) -> dict[str, Any]:
     """Run N tournament simulations. Aggregate champion + group-winner frequencies.
 
@@ -429,6 +493,7 @@ def run_monte_carlo(
             ko_advance=sim.ko_advance,
             fifa_ranking=sim.fifa_ranking,
             rng=rng,
+            played=played,
         )
         champion_counter[champion] += 1
         for g, w in group_winners.items():

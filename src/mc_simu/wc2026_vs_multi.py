@@ -120,6 +120,19 @@ def _edge_pct(x: float | None) -> str:
     return f"{x*100:>+7.2f}pp" if x is not None else "   —   "
 
 
+def _rel_pct(mc: float | None, mkt: float | None) -> str:
+    """Sam's relative view (2026-06-09): (market - model)/model.
+
+    +ve => market prices the team ABOVE our model (model cheap / under-values it);
+    -ve => model prices it above market (model rich / over-values it). Reads the
+    same disagreement as the abs-pp edge but normalized by model size, so a
+    +0.5pp miss on a 0.5% longshot shows as +100%, not "negligible".
+    """
+    if mc is None or mkt is None or mc <= 0:
+        return "   —    "
+    return f"{(mkt - mc) / mc * 100:>+7.1f}%"
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="WC2026 MC champion-prob vs all FairLine API model sources.")
@@ -190,6 +203,12 @@ def main(argv: list[str] | None = None) -> int:
                 row[col] = round(mc_p - val, 5)
             else:
                 row[col] = None
+            # Relative edge (Sam 2026-06-09): (market - model)/model, in %.
+            rel_col = col.replace("edge_vs_", "rel_vs_")
+            if mc_p is not None and mc_p > 0 and val is not None:
+                row[rel_col] = round((val - mc_p) / mc_p * 100, 2)
+            else:
+                row[rel_col] = None
         # Round source values for CSV
         for k in ("betfair", "other_sb", "fairline_model", "kalshi", "polymarket"):
             if row[k] is not None:
@@ -228,7 +247,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         banner("WC2026 — Top section (passes /odds-comparison ≥0.5pp anchor cut)")
         print(f"{'Team':<24} | {'MC':>7} | {'FLine':>7} | {'Betfair':>7} | {'OtherSB':>7} | "
-              f"{'Kalshi':>7} | {'Polym':>7} | {'edgeFLine':>10} | {'edgePoly':>10} |")
+              f"{'Kalshi':>7} | {'Polym':>7} | {'edgePoly':>10} | {'relPoly':>9} |")
         print("-" * 120)
         for r in top:
             print(f"{r['team']:<24} | "
@@ -238,12 +257,12 @@ def main(argv: list[str] | None = None) -> int:
                   f"{_pct(r['other_sb'])} | "
                   f"{_pct(r['kalshi'])} | "
                   f"{_pct(r['polymarket'])} | "
-                  f"{_edge_pct(r['edge_vs_fairline'])} | "
-                  f"{_edge_pct(r['edge_vs_polymarket'])} |")
+                  f"{_edge_pct(r['edge_vs_polymarket'])} | "
+                  f"{_rel_pct(r['mc_prob'], r['polymarket'])} |")
         print()
         banner("Tail (longshots — Kalshi/Polym from /prices, sportsbooks don't quote)")
         print(f"{'Team':<24} | {'MC':>7} | {'FLine':>7} | {'Kalshi':>7} | {'Polym':>7} | "
-              f"{'edgeFLine':>10} | {'edgeKalshi':>11} | {'edgePoly':>10} |")
+              f"{'edgePoly':>10} | {'relPoly':>9} | {'relKalshi':>9} |")
         print("-" * 110)
         for r in tail:
             print(f"{r['team']:<24} | "
@@ -251,9 +270,9 @@ def main(argv: list[str] | None = None) -> int:
                   f"{_pct(r['fairline_model'])} | "
                   f"{_pct(r['kalshi'])} | "
                   f"{_pct(r['polymarket'])} | "
-                  f"{_edge_pct(r['edge_vs_fairline'])} | "
-                  f"{_edge_pct(r['edge_vs_kalshi']):>11} | "
-                  f"{_edge_pct(r['edge_vs_polymarket'])} |")
+                  f"{_edge_pct(r['edge_vs_polymarket'])} | "
+                  f"{_rel_pct(r['mc_prob'], r['polymarket'])} | "
+                  f"{_rel_pct(r['mc_prob'], r['kalshi'])} |")
     else:
         banner(f"Full table (sorted by {sort_key})")
         print(f"{'Team':<24} {'MC':>8} {'Betfair':>8} {'OtherSB':>8} {'FLine':>8} {'Kalshi':>8} {'Polym':>8}  "
@@ -294,6 +313,24 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{src:<18} {n:>4} {mean_e*100:>+10.2f}pp {mean_abs*100:>+10.2f}pp "
               f"{mx_over*100:>+8.2f}pp ({top_over[:8]}) "
               f"{mx_under*100:>+8.2f}pp ({top_under[:8]})")
+
+    # Relative-edge summary (Sam 2026-06-09): (market - model)/model. Use MEDIAN
+    # — relative% explodes on near-zero-prob longshots, so mean is meaningless.
+    print()
+    banner("Per-source RELATIVE agreement — (market - model)/model, median over both")
+    print(f"{'Source':<18} {'n':>4} {'median_rel':>12} {'median|rel|':>12}  (+ = model UNDER-prices)")
+    for src, col in [("Betfair", "rel_vs_betfair"),
+                     ("Other SB", "rel_vs_other_sb"),
+                     ("Fairline Model", "rel_vs_fairline"),
+                     ("Kalshi", "rel_vs_kalshi"),
+                     ("Polymarket", "rel_vs_polymarket")]:
+        rels = sorted(r[col] for r in rows if r.get(col) is not None)
+        if not rels:
+            continue
+        n = len(rels)
+        med = rels[n // 2]
+        med_abs = sorted(abs(x) for x in rels)[n // 2]
+        print(f"{src:<18} {n:>4} {med:>+11.1f}% {med_abs:>+11.1f}%")
 
     return 0
 

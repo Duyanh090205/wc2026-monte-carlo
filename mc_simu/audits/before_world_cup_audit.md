@@ -53,7 +53,7 @@ Test (cached market, n=30k):
 **Verdict:** KHÔNG phải đếm thừa thuần — bỏ young-star bonus làm **JSD xấu +37%** (star bonus khôi phục "talent concentration" mà MV-tổng-log-z nén mất) và **Spain lật under** (squad Spain ~0 aging legend → mất hết bonus). Reject.
 
 ### 2.2 Hạ star X toàn cục (15→7.5) — REJECT (collateral)
-Plot: [wc2026_diff_x15_vs_x75.png](wc2026_diff_x15_vs_x75.png) (live PM, n=100k).
+(Live PM, n=100k — plot đã xoá, thí nghiệm bị bác.)
 Spain +3.83→+2.21 (tốt) **nhưng** France −1.25→−2.71, England +0.66→−0.79 (xấu — chúng cũng 8 sao). X là **nút toàn cục, không tách được Spain** khỏi các đội nhiều sao khác. Reject.
 
 ### 2.3 "Market định giá gì ta thiếu" — Spain KHÔNG hollow, xG KHÔNG phải lever
@@ -78,7 +78,7 @@ Recent form (since 2024-06): **Spain 21-6-0 bất bại, GF/g 2.74, GA/g 0.81, C
 ### 2.5 Lượng hoá + áp discount −30 Elo (Spain+Argentina) — đẹp nhưng CHƯA hợp lệ
 Mức ĐKVĐ đá dưới Elo: **−12.5pp win-share (~−130 Elo) overall**, nhưng **TRỌN ở vòng bảng** (−19.9pp / ~−215 Elo); **KO = +1.0pp (zero)**. Lưỡng cực: France'02 −59, Germany'18 −49, Italy'10 −47, Spain'14 −43 (sảy chân group); đi sâu thì +.
 
-Áp −30 Elo (live PM): Plot [wc2026_diff_champ_discount.png](wc2026_diff_champ_discount.png).
+Áp −30 Elo (live PM) — plot đã xoá (thí nghiệm bị bác):
 | | base X=15 | +disc −30 |
 |---|--:|--:|
 | Spain | +3.67 | **+0.84** |
@@ -119,7 +119,7 @@ Pre-registered: hợp lệ nếu (champion under hơn favorite ĐẶC THÙ) AND 
 ---
 
 ## 4. Artifacts
-- Plots: [wc2026_diff_x15_vs_x75.png](wc2026_diff_x15_vs_x75.png), [wc2026_diff_champ_discount.png](wc2026_diff_champ_discount.png)
+- Plots: đã xoá (2 hình thí nghiệm bị bác — X=15 vs X=7.5, champ discount −30); số liệu giữ trong §2.2 / §2.5.
 - Model output: `data/mc_simu/phase3_baselines/wc2026_final_mv_star_vs_market.csv` (48 đội + 3 market)
 - Reproduce model: `tune_to_market.py --D-grid 1400 --diag-grid 0.20 --n 100000 --mv-blend-alpha 0.5 --star-bonus-X 15`
 - Validation/test scripts: ad-hoc (chạy trong session, logic ghi ở §2.6) — historical từ `results.csv` + `elo_history.csv` + `shootouts.csv`.
