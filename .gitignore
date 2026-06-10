@@ -52,3 +52,7 @@ env/
 Thumbs.db
 .vscode/
 .idea/
+
+# Run logs + internal phase reports — local only
+logs/
+mc_simu/phase0_audit_report.md
