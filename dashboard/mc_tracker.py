@@ -59,10 +59,13 @@ def load_log() -> pd.DataFrame:
     return df
 
 
-def jsd_pct(p: np.ndarray, q: np.ndarray) -> float:
+def jsd_pct(p: np.ndarray, q: np.ndarray, eps: float = 1e-6) -> float:
+    """Base-2 JSD, mirrors mc_simu.tune_to_market.jsd so numbers match run logs."""
+    p = np.maximum(p, eps)
+    q = np.maximum(q, eps)
     p, q = p / p.sum(), q / q.sum()
     m = (p + q) / 2
-    kl = lambda a, b: float(np.sum(np.where(a > 0, a * np.log(a / np.where(b > 0, b, 1e-12)), 0.0)))
+    kl = lambda a, b: float(np.sum(a * np.log2(a / b)))
     return 0.5 * kl(p, m) + 0.5 * kl(q, m)
 
 
@@ -97,7 +100,8 @@ with tab_today:
     fig = go.Figure(go.Bar(
         x=sub["abs_pp"], y=sub["team"], orientation="h",
         marker_color=[UP_C if v > 0 else DOWN_C for v in sub["abs_pp"]],
-        text=[f"{v:+.2f}" for v in sub["abs_pp"]], textposition="outside"))
+        text=[f"{v:+.2f}" for v in sub["abs_pp"]], textposition="outside",
+        cliponaxis=False))
     fig.update_layout(template=TPL, height=26 * len(sub) + 120,
                       title="Absolute edge — model − market (pp)<br>"
                             "<sup>green: model above market · red: model below</sup>",
@@ -111,7 +115,8 @@ with tab_today:
     fig = go.Figure(go.Bar(
         x=rel["rel_pct"], y=rel["team"], orientation="h",
         marker_color=[DOWN_C if v > 0 else UP_C for v in rel["rel_pct"]],
-        text=[f"{v:+.0f}%" for v in rel["rel_pct"]], textposition="outside"))
+        text=[f"{v:+.0f}%" for v in rel["rel_pct"]], textposition="outside",
+        cliponaxis=False))
     fig.update_layout(template=TPL, height=26 * len(rel) + 120,
                       title="Relative edge — (market − model) / model (%)<br>"
                             "<sup>red: market prices the team RICHER than model (longshot premium)</sup>",
@@ -123,7 +128,10 @@ with tab_today:
 with tab_scatter:
     log_axes = st.toggle("Log scale (see the longshot tail)", value=True)
     s = snap[(snap["model_pct"] > 0) & (snap["consensus_pct"] > 0)]
-    lim_lo = max(min(s["model_pct"].min(), s["consensus_pct"].min()) * 0.7, 0.01)
+    n_zero = len(snap) - len(s)
+    if n_zero:
+        st.caption(f"{n_zero} teams hidden: model gives them 0% (log axes cannot show 0)")
+    lim_lo = min(s["model_pct"].min(), s["consensus_pct"].min()) * 0.7
     lim_hi = max(s["model_pct"].max(), s["consensus_pct"].max()) * 1.3
     fig = go.Figure()
     fig.add_scatter(x=[lim_lo, lim_hi], y=[lim_lo, lim_hi], mode="lines",
