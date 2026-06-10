@@ -474,7 +474,7 @@ def write_audit_report(results: list[CheckResult]) -> None:
         "- 0.1 DB connectivity: NOT RUN (opt-in via --with-db; v1 = file-only)",
         "- 0.2 Required tables: NOT RUN — pre-verified offline: repo has 7 tables (5 spec + api_call_log, live_price_cache)",
         "- 0.3 Recent fair_odds writes: NOT RUN",
-        "- 0.4 entity_map.json: PASS (run preflight.py to re-verify)",
+        "- 0.4 entity_map.json: PASS (preflight.py lives in the trading-engine repo)",
         "- 0.5 fair_odds schema: NOT RUN — pre-verified offline: actual is superset incl new consensus_prob col",
         "- v1 standalone path — all DB checks deferred to v2 (production integration)",
         "",

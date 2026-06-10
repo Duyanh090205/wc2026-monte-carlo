@@ -1,0 +1,120 @@
+[2026-06-10 19:09:20 UTC] Check 1 — Match history completeness
+  actual:   missing cols {'away_score', 'tournament', 'neutral', 'country', 'away_team', 'home_score'}
+  expected: ⊇ {'away_score', 'tournament', 'neutral', 'country', 'away_team', 'home_score', 'home_team', 'date'}
+
+[2026-06-10 19:09:20 UTC] Check 1 — Match history completeness
+  actual:   min date 2000-01-01
+  expected: ≤ 1998-01-01
+
+[2026-06-10 19:09:20 UTC] Check 2 — Tournament types
+  actual:   missing categories ['world_cup_final', 'continental_final', 'qualifier', 'nations_league', 'other_tournament']
+  expected: all of ['world_cup_final', 'continental_final', 'qualifier', 'nations_league', 'other_tournament', 'friendly']
+
+[2026-06-10 19:09:20 UTC] Check 3 — Neutral flag consistency
+  actual:   ['FIFA World Cup 2014: 1 host matches misflagged as neutral']
+  expected: all 5 host validations pass
+
+[2026-06-10 19:09:20 UTC] Check 4 — Euro 2020 attendance
+  actual:   only 5/50 matched
+  expected: >= 90% merge coverage
+
+[2026-06-10 19:09:20 UTC] Check 6 — WC2026 structure
+  actual:   ['total fixtures 50 != 104', 'group stage matches 50 != 72', 'Group A: 50 matches != 6', 'Group B: 0 matches != 6', 'Group C: 0 matches != 6', 'Group D: 0 matches != 6', 'Group E: 0 matches != 6', 'Group F: 0 matches != 6', 'Group G: 0 matches != 6', 'Group H: 0 matches != 6', 'Group I: 0 matches != 6', 'Group J: 0 matches != 6', 'Group K: 0 matches != 6', 'Group L: 0 matches != 6', 'R32 mappings 0 != 495']
+  expected: 104 fixtures + 72 group + 6/group + 495 R32
+
+[2026-06-10 19:09:20 UTC] sanity_check_history Layer A
+  actual:   1 teams outside [500, 2500]: Brazil=450
+  expected: all latest ratings ∈ [500, 2500]
+
+[2026-06-10 19:09:20 UTC] sanity_check_history Layer A
+  actual:   1 teams outside [500, 2500]: Brazil=450
+  expected: all latest ratings ∈ [500, 2500]
+
+[2026-06-10 19:09:20 UTC] sanity_check_history Layer A
+  actual:   1 teams outside [500, 2500]: Brazil=2600
+  expected: all latest ratings ∈ [500, 2500]
+
+[2026-06-10 19:09:20 UTC] sanity_check_history Layer B
+  actual:   6 of top-20 diverge >100 Elo: Brazil: model=1500 ref=2000 Δ=-500; Spain: model=1500 ref=2000 Δ=-500; France: model=1500 ref=2000 Δ=-500; England: model=1500 ref=2000 Δ=-500; Argentina: model=1500 ref=2000 Δ=-500; Portugal: model=1500 ref=2000 Δ=-500
+  expected: ≤5 divergences
+
+[2026-06-10 19:09:34 UTC] Check 1 — Match history completeness
+  actual:   missing cols {'country', 'neutral', 'tournament', 'home_score', 'away_score', 'away_team'}
+  expected: ⊇ {'country', 'neutral', 'tournament', 'home_score', 'away_score', 'away_team', 'date', 'home_team'}
+
+[2026-06-10 19:09:34 UTC] Check 1 — Match history completeness
+  actual:   min date 2000-01-01
+  expected: ≤ 1998-01-01
+
+[2026-06-10 19:09:34 UTC] Check 2 — Tournament types
+  actual:   missing categories ['world_cup_final', 'continental_final', 'qualifier', 'nations_league', 'other_tournament']
+  expected: all of ['world_cup_final', 'continental_final', 'qualifier', 'nations_league', 'other_tournament', 'friendly']
+
+[2026-06-10 19:09:34 UTC] Check 3 — Neutral flag consistency
+  actual:   ['FIFA World Cup 2014: 1 host matches misflagged as neutral']
+  expected: all 5 host validations pass
+
+[2026-06-10 19:09:34 UTC] Check 4 — Euro 2020 attendance
+  actual:   only 5/50 matched
+  expected: >= 90% merge coverage
+
+[2026-06-10 19:09:34 UTC] Check 6 — WC2026 structure
+  actual:   ['total fixtures 50 != 104', 'group stage matches 50 != 72', 'Group A: 50 matches != 6', 'Group B: 0 matches != 6', 'Group C: 0 matches != 6', 'Group D: 0 matches != 6', 'Group E: 0 matches != 6', 'Group F: 0 matches != 6', 'Group G: 0 matches != 6', 'Group H: 0 matches != 6', 'Group I: 0 matches != 6', 'Group J: 0 matches != 6', 'Group K: 0 matches != 6', 'Group L: 0 matches != 6', 'R32 mappings 0 != 495']
+  expected: 104 fixtures + 72 group + 6/group + 495 R32
+
+[2026-06-10 19:09:34 UTC] sanity_check_history Layer A
+  actual:   1 teams outside [500, 2500]: Brazil=450
+  expected: all latest ratings ∈ [500, 2500]
+
+[2026-06-10 19:09:34 UTC] sanity_check_history Layer A
+  actual:   1 teams outside [500, 2500]: Brazil=450
+  expected: all latest ratings ∈ [500, 2500]
+
+[2026-06-10 19:09:34 UTC] sanity_check_history Layer A
+  actual:   1 teams outside [500, 2500]: Brazil=2600
+  expected: all latest ratings ∈ [500, 2500]
+
+[2026-06-10 19:09:34 UTC] sanity_check_history Layer B
+  actual:   6 of top-20 diverge >100 Elo: Brazil: model=1500 ref=2000 Δ=-500; Spain: model=1500 ref=2000 Δ=-500; France: model=1500 ref=2000 Δ=-500; England: model=1500 ref=2000 Δ=-500; Argentina: model=1500 ref=2000 Δ=-500; Portugal: model=1500 ref=2000 Δ=-500
+  expected: ≤5 divergences
+
+[2026-06-10 19:10:39 UTC] Check 1 — Match history completeness
+  actual:   missing cols {'country', 'away_team', 'neutral', 'tournament', 'away_score', 'home_score'}
+  expected: ⊇ {'home_score', 'country', 'away_team', 'home_team', 'neutral', 'date', 'tournament', 'away_score'}
+
+[2026-06-10 19:10:39 UTC] Check 1 — Match history completeness
+  actual:   min date 2000-01-01
+  expected: ≤ 1998-01-01
+
+[2026-06-10 19:10:39 UTC] Check 2 — Tournament types
+  actual:   missing categories ['world_cup_final', 'continental_final', 'qualifier', 'nations_league', 'other_tournament']
+  expected: all of ['world_cup_final', 'continental_final', 'qualifier', 'nations_league', 'other_tournament', 'friendly']
+
+[2026-06-10 19:10:39 UTC] Check 3 — Neutral flag consistency
+  actual:   ['FIFA World Cup 2014: 1 host matches misflagged as neutral']
+  expected: all 5 host validations pass
+
+[2026-06-10 19:10:40 UTC] Check 4 — Euro 2020 attendance
+  actual:   only 5/50 matched
+  expected: >= 90% merge coverage
+
+[2026-06-10 19:10:40 UTC] Check 6 — WC2026 structure
+  actual:   ['total fixtures 50 != 104', 'group stage matches 50 != 72', 'Group A: 50 matches != 6', 'Group B: 0 matches != 6', 'Group C: 0 matches != 6', 'Group D: 0 matches != 6', 'Group E: 0 matches != 6', 'Group F: 0 matches != 6', 'Group G: 0 matches != 6', 'Group H: 0 matches != 6', 'Group I: 0 matches != 6', 'Group J: 0 matches != 6', 'Group K: 0 matches != 6', 'Group L: 0 matches != 6', 'R32 mappings 0 != 495']
+  expected: 104 fixtures + 72 group + 6/group + 495 R32
+
+[2026-06-10 19:10:58 UTC] sanity_check_history Layer A
+  actual:   1 teams outside [500, 2500]: Brazil=450
+  expected: all latest ratings ∈ [500, 2500]
+
+[2026-06-10 19:10:58 UTC] sanity_check_history Layer A
+  actual:   1 teams outside [500, 2500]: Brazil=450
+  expected: all latest ratings ∈ [500, 2500]
+
+[2026-06-10 19:10:58 UTC] sanity_check_history Layer A
+  actual:   1 teams outside [500, 2500]: Brazil=2600
+  expected: all latest ratings ∈ [500, 2500]
+
+[2026-06-10 19:10:58 UTC] sanity_check_history Layer B
+  actual:   6 of top-20 diverge >100 Elo: Brazil: model=1500 ref=2000 Δ=-500; Spain: model=1500 ref=2000 Δ=-500; France: model=1500 ref=2000 Δ=-500; England: model=1500 ref=2000 Δ=-500; Argentina: model=1500 ref=2000 Δ=-500; Portugal: model=1500 ref=2000 Δ=-500
+  expected: ≤5 divergences
+
