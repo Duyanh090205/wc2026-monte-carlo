@@ -21,6 +21,7 @@ import argparse
 import csv
 import datetime as _dt
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -46,6 +47,28 @@ DATA = PROJECT_ROOT / "data" / "mc_simu"
 DEFAULT_API = "https://seal-app-yatxw.ondigitalocean.app/api"
 LOG_COLS = ["date", "team", "model_pct", "pm_pct", "kalshi_pct",
             "consensus_pct", "abs_pp", "rel_pct"]
+
+
+def push_supabase(rows: list[dict]) -> bool:
+    """Upsert the day's rows into Supabase table `daily_log` (on date,team).
+
+    Needs SUPABASE_URL + SUPABASE_SERVICE_KEY in the environment; silently
+    skipped when absent (local runs keep the CSV log only).
+    """
+    url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_KEY")
+    if not url or not key:
+        return False
+    import requests
+    payload = [{c: (None if r[c] == "" else r[c]) for c in LOG_COLS} for r in rows]
+    resp = requests.post(
+        f"{url.rstrip('/')}/rest/v1/daily_log?on_conflict=date,team",
+        headers={"apikey": key, "Authorization": f"Bearer {key}",
+                 "Content-Type": "application/json",
+                 "Prefer": "resolution=merge-duplicates,return=minimal"},
+        json=payload, timeout=30,
+    )
+    resp.raise_for_status()
+    return True
 
 
 def _teams48():
@@ -125,6 +148,11 @@ def main(argv: list[str] | None = None) -> int:
             w.writeheader()
         w.writerows(rows)
     print(f"Appended {len(rows)} rows to {args.log_csv}")
+    try:
+        if push_supabase(rows):
+            print(f"Upserted {len(rows)} rows to Supabase daily_log")
+    except Exception as e:
+        print(f"Supabase push FAILED (CSV log intact): {e}")
 
     # daily summary
     j = jsd(mdl, mkt_cons, common)
@@ -140,7 +168,7 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-__all__ = ["production_ratings", "model_champion_probs", "live_market", "main"]
+__all__ = ["production_ratings", "model_champion_probs", "live_market", "push_supabase", "main"]
 
 
 if __name__ == "__main__":

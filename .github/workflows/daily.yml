@@ -1,0 +1,37 @@
+name: daily-tracker
+
+on:
+  schedule:
+    - cron: "30 8 * * *"   # 08:30 UTC daily, after the previous matchday fully settles
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install numpy scipy pandas requests
+      - name: Daily conditional rerun vs live market
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: PYTHONPATH=src python -m mc_simu.run_daily --n 50000 | tee run.log
+      - name: Job summary
+        if: always()
+        run: |
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tail -20 run.log >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep CSV artifact as backup
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-log-${{ github.run_id }}
+          path: data/mc_simu/daily_log.csv
+          if-no-files-found: ignore
+          retention-days: 90
