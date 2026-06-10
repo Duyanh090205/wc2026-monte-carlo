@@ -21,21 +21,31 @@ def _cred(name):
     return st.secrets.get(name, os.environ.get(name, ""))
 
 
+LOCAL_CSV = os.path.join(os.path.dirname(__file__), "..", "data", "mc_simu", "daily_log.csv")
+
+
 @st.cache_data(ttl=600)
 def load_log() -> pd.DataFrame:
     url, key = _cred("SUPABASE_URL"), _cred("SUPABASE_ANON_KEY")
-    if not url or not key:
-        st.error("Set SUPABASE_URL + SUPABASE_ANON_KEY in secrets")
+    if url and key:
+        r = requests.get(
+            f"{url.rstrip('/')}/rest/v1/daily_log?select=*&order=date.asc&limit=100000",
+            headers={"apikey": key, "Authorization": f"Bearer {key}"}, timeout=30)
+        r.raise_for_status()
+        df = pd.DataFrame(r.json())
+    elif os.path.exists(LOCAL_CSV):
+        st.info("No Supabase credentials — local preview from data/mc_simu/daily_log.csv")
+        df = pd.read_csv(LOCAL_CSV)
+    else:
+        st.error("Set SUPABASE_URL + SUPABASE_ANON_KEY in secrets, or generate "
+                 "data/mc_simu/daily_log.csv with `python -m mc_simu.run_daily`")
         st.stop()
-    r = requests.get(
-        f"{url.rstrip('/')}/rest/v1/daily_log?select=*&order=date.asc&limit=100000",
-        headers={"apikey": key, "Authorization": f"Bearer {key}"}, timeout=30)
-    r.raise_for_status()
-    df = pd.DataFrame(r.json())
     if df.empty:
         st.warning("daily_log is empty — first scheduled run hasn't landed yet")
         st.stop()
     df["date"] = pd.to_datetime(df["date"])
+    for c in ("model_pct", "pm_pct", "kalshi_pct", "consensus_pct", "abs_pp", "rel_pct"):
+        df[c] = pd.to_numeric(df[c], errors="coerce")
     return df
 
 
