@@ -1,6 +1,8 @@
-# Stream 3 — MC Tournament Simulator
+# MC Tournament Simulator — how to run
 
-Independent structural prior for FairLine: Elo-based team strength + HFA + Poisson goals + MC tournament simulation. Runs standalone — does not touch the live trading engine (Stream 1 + Stream 2 in [root README](../README.md)).
+Elo-based team strength + HFA + Poisson goals + MC tournament simulation, plus a
+daily model-vs-market tracker for WC2026. Standalone repo (see [root README](../README.md));
+the live trading engine lives in `IterLight-Lab/Prediction-Market-Project`.
 
 **For design rationale and parameter justification, see [MODEL_SPEC.md](MODEL_SPEC.md).** This file is for running the simulator.
 
@@ -14,15 +16,16 @@ Independent structural prior for FairLine: Elo-based team strength + HFA + Poiss
 | 1 | Elo engine + `predict_match` | ✅ Done |
 | 2 | Roster-Elo overlay | ⛔ Skipped — ClubElo coverage 55% on WC2026 squads |
 | 3 | Tournament MC harness + 3-predictor head-to-head | ✅ Done |
-| 4 | LOTO-CV tuning | ⏳ Pending |
-| 5 | Team presentation | ⏳ Pending |
+| 4 | Model selection (ELO+MV+star) + LOTO-CV lock (D=1400, diag=0.20) | ✅ Done |
+| 5 | Conditioning harness + WC2018/22 backtest + daily tracker | ✅ Done |
 
 ---
 
 ## Requirements
 
 - Python ≥ 3.10 (project pins 3.12.8 via `.python-version`)
-- Packages from project root `requirements.txt` — only `numpy`, `scipy`, `pandas`, `requests`, `beautifulsoup4` are needed for MC simulator. The full project also installs Selenium, FastAPI, Streamlit, etc. — those are NOT used by mc_simu.
+- Packages from root `requirements.txt` (core: `numpy`, `scipy`, `pandas`, `requests`,
+  `beautifulsoup4`; `matplotlib` for figures; `streamlit`+`plotly` only for the dashboard).
 - ~35 MB free disk for committed input data; ~5 MB for generated outputs.
 
 ```powershell
@@ -41,12 +44,6 @@ On Linux/macOS:
 export PYTHONPATH=src
 ```
 
-Alternatively run scripts directly without setting `PYTHONPATH`:
-
-```bash
-python src/mc_simu/preflight.py
-```
-
 ---
 
 ## Quickstart — reproduce Phase 3 baseline results
@@ -54,27 +51,24 @@ python src/mc_simu/preflight.py
 All input data is committed to `data/mc_simu/`. You do not need to download or scrape anything to reproduce the baseline run.
 
 ```powershell
-# 1. Verify data integrity (~5 s)
-python -m mc_simu.preflight
-
-# 2. Run both Elo predictors (self + eloratings) across all 11 historical editions (~70 s)
+# 1. Run both Elo predictors (self + eloratings) across all 11 historical editions (~70 s)
 python -m mc_simu.run_phase3_baselines --n 10000 --both
 
-# 3. Add the 40/40/20 baseline predictor (~35 s)
+# 2. Add the 40/40/20 baseline predictor (~35 s)
 python -m mc_simu.run_phase3_baselines --n 10000 --predictor baseline
 
-# 4. Score replays against actual champions
+# 3. Score replays against actual champions
 python -m mc_simu.historical_replay
 
-# 5. Compare WC2026 predictions vs current Polymarket prices
-python -m mc_simu.wc2026_vs_polymarket
+# 4. Compare WC2026 predictions vs live markets (Polymarket + Kalshi + sportsbooks)
+python -m mc_simu.wc2026_vs_multi
 ```
 
 Outputs land in `data/mc_simu/phase3_baselines/`:
 
 - `mc_<edition>_<model>_n10000_seed42.csv` — per-edition champion distributions (36 files: 12 editions × 3 models)
 - `replay_report.md` + `replay_scores.csv` — Σ log P(actual champion) per (edition, model)
-- `wc2026_vs_polymarket.csv` — model vs PM mid edge table
+- `wc2026_vs_multi.csv` — model vs market edge table (abs pp + relative %)
 
 These output files are **not committed** — they regenerate each run.
 
@@ -91,6 +85,29 @@ python -m mc_simu.run_mc_simu --n 100000 --seed 42
 ```
 
 Output: `data/mc_simu/mc_wc2026_v1_<N>_seed<S>.csv` (champion + group winner probabilities, 96 rows).
+
+---
+
+## Daily tracker + backtest (production model: ELO+MV+star)
+
+```powershell
+# Daily conditional rerun vs live market — appends a snapshot row per team to
+# data/mc_simu/daily_log.csv (and upserts to Supabase when SUPABASE_URL +
+# SUPABASE_SERVICE_KEY are set). Locks results from data/mc_simu/wc2026_played.csv.
+python -m mc_simu.run_daily --n 50000
+
+# Round-by-round backtest of the conditioning harness on a past WC,
+# with archived oddschecker market overlay (Wayback)
+python -m mc_simu.replay_wc_conditioned --year 2022 --plot
+
+# Dashboard (local preview reads daily_log.csv; deployed app reads Supabase)
+streamlit run dashboard/mc_tracker.py
+```
+
+Automation: `.github/workflows/daily.yml` runs `run_daily` at 08:30 UTC daily
+(repo secrets `SUPABASE_URL` + `SUPABASE_SERVICE_KEY`); table schema in
+`deploy/supabase_schema.sql`. During the tournament, update
+`data/mc_simu/wc2026_played.csv` and push — the next cron run re-conditions on it.
 
 ---
 
@@ -122,7 +139,7 @@ Wikipedia HTML snapshots used for offline scraping are committed under `data/mc_
 ## Tests
 
 ```powershell
-pytest tests/mc_simu/                  # 296 tests + 3 wiring audits, ~30 s
+pytest tests/mc_simu/                  # 289 tests + wiring audits, ~30 s
 ```
 
 Wiring audits (`tests/mc_simu/audit_phase*_wiring.py`) catch integration-layer bugs that unit tests miss — e.g., scalar vs vectorized samplers producing different outputs given the same RNG state, or knockout symmetry violations.
@@ -138,15 +155,20 @@ mc_simu/
 ├── mc_simu.md            ← internal implementation plan (full phase log)
 └── phases/               ← per-phase design notes
 
-src/mc_simu/              ← simulator code (39 modules)
+src/mc_simu/              ← simulator code (44 modules)
 ├── elo.py                ← Elo engine (rating updates, MoV, K-factor)
 ├── single_game.py        ← predict_match — Elo → λ → Poisson grid → W/D/L
 ├── simulator.py          ← MC tournament harness (vectorized hot path)
 ├── standings.py          ← FIFA 2026 tiebreaker chain (H2H-first)
+├── mv_blend.py / star_presence.py ← market-value blend + star bonus (production model)
+├── run_daily.py          ← daily conditional rerun vs live market (tracker)
+├── replay_wc_conditioned.py ← WC2018/22 round-by-round backtest
 ├── tournaments/          ← 4 bracket adapters (WC2026, WC 8-group, Euro 24/16)
 └── ...                   ← data loaders, scrapers, validators
 
-tests/mc_simu/            ← 17 test files + 4 audit scripts
+dashboard/mc_tracker.py   ← Streamlit dashboard (Supabase or local CSV)
+
+tests/mc_simu/            ← 16 test files + 4 audit scripts
 
 data/mc_simu/             ← committed inputs (no results)
 ├── matches_1998_2026.csv ← filtered match history (4.5 MB, post-1998)
@@ -167,6 +189,8 @@ The following are deliberately excluded from the repo per Sam's reproducibility 
 - `data/mc_simu/mc_wc2026_*.csv` — regenerated by `run_mc_simu.py`
 - `data/mc_simu/loto_cv_*.csv` — calibration sweep results (Phase 1 + Phase 4)
 - `data/mc_simu/replay_*.csv` — historical replay scores
+- `data/mc_simu/daily_log.csv` — daily tracker log (canonical copy lives in Supabase)
+- `mc_simu/figures/` — generated figures
 
 Run the Quickstart commands above to regenerate them.
 
@@ -174,9 +198,14 @@ Run the Quickstart commands above to regenerate them.
 
 ## Integration with live trading engine
 
-**v1 (current):** MC simulator is **standalone**. It does not write to Supabase, does not touch `live_edge.py` or `paper_trader.py`, and its outputs are not used for trade signals.
+**v1 (current):** standalone repo. The only network touchpoints are the market
+fetch in `run_daily.py` (FairLine `/prices` endpoint, read-only) and the tracker's
+own Supabase table. Nothing here writes to the trading engine
+(`IterLight-Lab/Prediction-Market-Project`) or feeds trade signals.
 
-**v2 (post-WC2026 review):** Optional integration into `live_edge.py` as a third edge source alongside Stream 1 (sportsbook devigged) and Stream 2 (Polymarket/Kalshi). Decision deferred to team review after WC2026 group stage data accumulates.
+**v2 (post-WC2026 review):** optional integration into the engine's `live_edge.py`
+as a third edge source. Decision deferred to team review after WC2026 group-stage
+data accumulates in `daily_log`.
 
 ---
 

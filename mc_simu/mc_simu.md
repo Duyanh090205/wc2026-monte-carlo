@@ -289,7 +289,7 @@ Alert via Telegram/Slack on any failure.
 src/mc_simu/                       # Stream 3 module (under existing src/)
 ├── __init__.py
 ├── _common.py                     # hard_stop, banner, tournament_type mapping
-├── preflight.py                   # Pre-flight checks (Phase 0)
+├── preflight.py                   # Pre-flight checks (Phase 0; moved to the trading-engine repo at the 2026-06 split)
 ├── data_audit.py                  # Data quality checks (Phase 0)
 ├── download_match_history.py      # GitHub mirror fetcher (Phase 0)
 ├── scrape_euro2020_attendance.py  # Wikipedia scraper (Phase 0)
