@@ -3,18 +3,24 @@
 Deploy on Streamlit Community Cloud pointing at this file; set in app secrets:
     SUPABASE_URL = "https://<project>.supabase.co"
     SUPABASE_ANON_KEY = "<anon key>"
-Local: streamlit run dashboard/mc_tracker.py (reads the same two env vars).
+Local: streamlit run dashboard/mc_tracker.py
+(falls back to data/mc_simu/daily_log.csv when no credentials are set).
 """
 
 import os
 
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import requests
 import streamlit as st
 
-st.set_page_config(page_title="MC vs Market — WC2026", layout="wide")
+st.set_page_config(page_title="MC vs Market — WC2026", layout="wide", page_icon="📈")
+
+MODEL_C, MARKET_C = "#1f77b4", "#444444"
+UP_C, DOWN_C = "#2a8a2a", "#cc3b2f"
+TPL = "plotly_white"
 
 
 def _cred(name):
@@ -39,7 +45,6 @@ def load_log() -> pd.DataFrame:
         r.raise_for_status()
         df = pd.DataFrame(r.json())
     elif os.path.exists(LOCAL_CSV):
-        st.info("No Supabase credentials — local preview from data/mc_simu/daily_log.csv")
         df = pd.read_csv(LOCAL_CSV)
     else:
         st.error("Set SUPABASE_URL + SUPABASE_ANON_KEY in secrets, or generate "
@@ -54,44 +59,152 @@ def load_log() -> pd.DataFrame:
     return df
 
 
+def jsd_pct(p: np.ndarray, q: np.ndarray) -> float:
+    p, q = p / p.sum(), q / q.sum()
+    m = (p + q) / 2
+    kl = lambda a, b: float(np.sum(np.where(a > 0, a * np.log(a / np.where(b > 0, b, 1e-12)), 0.0)))
+    return 0.5 * kl(p, m) + 0.5 * kl(q, m)
+
+
 df = load_log()
 dates = sorted(df["date"].unique())
-latest = df[df["date"] == dates[-1]].sort_values("model_pct", ascending=False)
 
 st.title("MC simulator vs market — WC2026 daily tracker")
-st.caption(f"{len(dates)} snapshot days · last: {pd.Timestamp(dates[-1]).date()} · "
-           "model = ELO+MV+star, static, re-conditioned on played results daily")
+st.caption("Model: ELO + squad-MV + star (static, locked pre-tournament) — re-conditioned daily "
+           "on played results only. Goal: track the market with a stable, understood bias; "
+           "an unusual divergence from that bias is the signal.")
 
-c1, c2, c3 = st.columns(3)
-l1 = (latest["model_pct"] - latest["consensus_pct"]).abs().sum()
-c1.metric("Teams quoted", len(latest))
-c2.metric("L1 distance (latest)", f"{l1:.1f} pp")
-c3.metric("Max |edge| (latest)", f"{latest['abs_pp'].abs().max():.2f} pp")
+day = st.sidebar.selectbox("Snapshot day", [pd.Timestamp(d).date() for d in reversed(dates)])
+top_n = st.sidebar.slider("Teams shown in charts", 10, 48, 20)
+snap = df[df["date"] == pd.Timestamp(day)].sort_values("model_pct", ascending=False)
 
-st.subheader("Champion probability through time — model (line) vs market (dots)")
-default_teams = list(latest.head(6)["team"])
-teams = st.multiselect("Teams", sorted(df["team"].unique()), default=default_teams)
-fig = go.Figure()
-palette = px.colors.qualitative.Plotly
-for i, t in enumerate(teams):
-    sub = df[df["team"] == t]
-    c = palette[i % len(palette)]
-    fig.add_scatter(x=sub["date"], y=sub["model_pct"], name=f"{t} model",
-                    mode="lines+markers", line=dict(color=c, width=2))
-    fig.add_scatter(x=sub["date"], y=sub["consensus_pct"], name=f"{t} market",
-                    mode="markers", marker=dict(color=c, symbol="x", size=9),
-                    showlegend=False)
-fig.update_layout(height=480, yaxis_title="champion prob (%)", hovermode="x unified")
-st.plotly_chart(fig, width='stretch')
+l1 = (snap["model_pct"] - snap["consensus_pct"]).abs().sum()
+j = jsd_pct(snap["model_pct"].to_numpy(), snap["consensus_pct"].to_numpy())
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Days tracked", len(dates))
+m2.metric("JSD vs market", f"{j:.4f}")
+m3.metric("L1 distance", f"{l1:.1f} pp")
+m4.metric("Max |edge|", f"{snap['abs_pp'].abs().max():.2f} pp")
 
-st.subheader("Today's edge board (model − market)")
-board = latest[["team", "model_pct", "consensus_pct", "abs_pp", "rel_pct"]].copy()
-board = board.reindex(board["abs_pp"].abs().sort_values(ascending=False).index)
-st.dataframe(board, width='stretch', hide_index=True, height=420)
+tab_today, tab_scatter, tab_traj, tab_stab, tab_data = st.tabs(
+    ["Today's edge", "Model vs market", "Trajectories", "Bias stability", "Data"])
 
-st.subheader("Model–market distance per day (is our bias stable?)")
-daily = df.groupby("date").apply(
-    lambda g: (g["model_pct"] - g["consensus_pct"]).abs().sum(), include_groups=False
-).rename("L1 (pp)").reset_index()
-st.plotly_chart(px.line(daily, x="date", y="L1 (pp)", markers=True, height=300),
-                width='stretch')
+
+with tab_today:
+    c_abs, c_rel = st.columns(2)
+    sub = snap.reindex(snap["abs_pp"].abs().sort_values(ascending=False).index).head(top_n)
+    sub = sub.sort_values("abs_pp")
+    fig = go.Figure(go.Bar(
+        x=sub["abs_pp"], y=sub["team"], orientation="h",
+        marker_color=[UP_C if v > 0 else DOWN_C for v in sub["abs_pp"]],
+        text=[f"{v:+.2f}" for v in sub["abs_pp"]], textposition="outside"))
+    fig.update_layout(template=TPL, height=26 * len(sub) + 120,
+                      title="Absolute edge — model − market (pp)<br>"
+                            "<sup>green: model above market · red: model below</sup>",
+                      xaxis_title="model − market (pp)", margin=dict(l=10, r=40))
+    fig.add_vline(x=0, line_color="black", line_width=1)
+    c_abs.plotly_chart(fig, width="stretch")
+
+    rel = snap.dropna(subset=["rel_pct"])
+    rel = rel.reindex(rel["rel_pct"].abs().sort_values(ascending=False).index).head(top_n)
+    rel = rel.sort_values("rel_pct")
+    fig = go.Figure(go.Bar(
+        x=rel["rel_pct"], y=rel["team"], orientation="h",
+        marker_color=[DOWN_C if v > 0 else UP_C for v in rel["rel_pct"]],
+        text=[f"{v:+.0f}%" for v in rel["rel_pct"]], textposition="outside"))
+    fig.update_layout(template=TPL, height=26 * len(rel) + 120,
+                      title="Relative edge — (market − model) / model (%)<br>"
+                            "<sup>red: market prices the team RICHER than model (longshot premium)</sup>",
+                      xaxis_title="(market − model) / model (%)", margin=dict(l=10, r=50))
+    fig.add_vline(x=0, line_color="black", line_width=1)
+    c_rel.plotly_chart(fig, width="stretch")
+
+
+with tab_scatter:
+    log_axes = st.toggle("Log scale (see the longshot tail)", value=True)
+    s = snap[(snap["model_pct"] > 0) & (snap["consensus_pct"] > 0)]
+    lim_lo = max(min(s["model_pct"].min(), s["consensus_pct"].min()) * 0.7, 0.01)
+    lim_hi = max(s["model_pct"].max(), s["consensus_pct"].max()) * 1.3
+    fig = go.Figure()
+    fig.add_scatter(x=[lim_lo, lim_hi], y=[lim_lo, lim_hi], mode="lines",
+                    line=dict(color="gray", dash="dash"), name="model = market")
+    fig.add_scatter(
+        x=s["consensus_pct"], y=s["model_pct"], mode="markers+text",
+        text=[t if (r["model_pct"] > 2 or r["consensus_pct"] > 2) else ""
+              for t, (_, r) in zip(s["team"], s.iterrows())],
+        textposition="top center", textfont_size=10,
+        marker=dict(size=9, color=s["abs_pp"], colorscale="RdYlGn", cmid=0,
+                    colorbar=dict(title="edge pp")),
+        customdata=s["team"], name="teams",
+        hovertemplate="%{customdata}<br>market %{x:.2f}% · model %{y:.2f}%<extra></extra>")
+    ax = dict(type="log" if log_axes else "linear", range=None)
+    if log_axes:
+        ax["range"] = [np.log10(lim_lo), np.log10(lim_hi)]
+    fig.update_layout(template=TPL, height=620,
+                      title="Model vs market — points above the line = model higher than market<br>"
+                            "<sup>distance from the diagonal IS the edge; the tail shows the favorite-longshot pattern</sup>",
+                      xaxis={**ax, "title": "market consensus (%)"},
+                      yaxis={**ax, "title": "model (%)"})
+    st.plotly_chart(fig, width="stretch")
+
+
+with tab_traj:
+    if len(dates) == 1:
+        st.info("Trajectories build up as daily snapshots accumulate — come back after a few days. "
+                "Backtest preview of what this becomes: WC2022 replay in mc_simu/audits/.")
+    default_teams = list(snap.head(6)["team"])
+    teams = st.multiselect("Teams", sorted(df["team"].unique()), default=default_teams)
+    fig = go.Figure()
+    palette = px.colors.qualitative.Plotly
+    for i, t in enumerate(teams):
+        subt = df[df["team"] == t]
+        c = palette[i % len(palette)]
+        fig.add_scatter(x=subt["date"], y=subt["model_pct"], name=t,
+                        mode="lines+markers", line=dict(color=c, width=2))
+        fig.add_scatter(x=subt["date"], y=subt["consensus_pct"], name=f"{t} market",
+                        mode="markers", marker=dict(color=c, symbol="x", size=10),
+                        showlegend=False)
+    fig.update_layout(template=TPL, height=520, hovermode="x unified",
+                      title="Champion probability — model (line) vs market (✕)",
+                      yaxis_title="champion prob (%)")
+    st.plotly_chart(fig, width="stretch")
+
+
+with tab_stab:
+    c_l1, c_hm = st.columns([1, 2])
+    daily = df.groupby("date").apply(
+        lambda g: pd.Series({
+            "L1 (pp)": (g["model_pct"] - g["consensus_pct"]).abs().sum(),
+            "JSD": jsd_pct(g["model_pct"].to_numpy(), g["consensus_pct"].to_numpy()),
+        }), include_groups=False).reset_index()
+    fig = px.line(daily, x="date", y="L1 (pp)", markers=True, template=TPL, height=300,
+                  title="Total model–market distance per day")
+    c_l1.plotly_chart(fig, width="stretch")
+    fig = px.line(daily, x="date", y="JSD", markers=True, template=TPL, height=300,
+                  title="JSD per day")
+    c_l1.plotly_chart(fig, width="stretch")
+
+    top_teams = (df.groupby("team")["consensus_pct"].max()
+                 .sort_values(ascending=False).head(top_n).index)
+    piv = (df[df["team"].isin(top_teams)]
+           .pivot_table(index="team", columns="date", values="abs_pp")
+           .reindex(top_teams))
+    piv.columns = [pd.Timestamp(c).strftime("%m-%d") for c in piv.columns]
+    fig = px.imshow(piv, color_continuous_scale="RdYlGn", zmin=-3, zmax=3, aspect="auto",
+                    template=TPL, height=26 * len(piv) + 140,
+                    title="Per-team edge through time (pp) — a STABLE row colour = understood bias;<br>"
+                          "<sup>a row that flips colour is the anomaly worth investigating</sup>")
+    fig.update_layout(coloraxis_colorbar_title="pp")
+    c_hm.plotly_chart(fig, width="stretch")
+
+
+with tab_data:
+    show = snap[["team", "model_pct", "pm_pct", "kalshi_pct", "consensus_pct", "abs_pp", "rel_pct"]]
+    st.dataframe(
+        show.style.background_gradient(subset=["abs_pp"], cmap="RdYlGn", vmin=-3, vmax=3)
+            .format({"model_pct": "{:.2f}", "pm_pct": "{:.2f}", "kalshi_pct": "{:.2f}",
+                     "consensus_pct": "{:.2f}", "abs_pp": "{:+.2f}", "rel_pct": "{:+.0f}%"},
+                    na_rep="—"),
+        width="stretch", hide_index=True, height=620)
+    st.download_button("Download full log (CSV)", df.to_csv(index=False),
+                       file_name="daily_log.csv", mime="text/csv")
