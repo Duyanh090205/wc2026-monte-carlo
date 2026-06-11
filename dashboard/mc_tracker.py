@@ -74,6 +74,23 @@ def spread_labels(xn: np.ndarray, yn: np.ndarray, labeled: list) -> list:
     return pos
 
 
+def apply_market_source(df: pd.DataFrame, col: str) -> pd.DataFrame:
+    """Set mkt_pct to the chosen source; for a single platform, recompute edges
+    per day over the teams that platform quotes, with both sides renormalized."""
+    if col == "consensus_pct":
+        out = df.copy()
+        out["mkt_pct"] = out["consensus_pct"]
+        return out
+    out = df.dropna(subset=[col]).copy()
+    out["model_pct"] = out["model_pct"] * 100 / out.groupby("date")["model_pct"].transform("sum")
+    out["mkt_pct"] = out[col] * 100 / out.groupby("date")[col].transform("sum")
+    out["abs_pp"] = out["model_pct"] - out["mkt_pct"]
+    out["rel_pct"] = np.where(out["model_pct"] > 0,
+                              (out["mkt_pct"] - out["model_pct"]) / out["model_pct"] * 100,
+                              np.nan)
+    return out
+
+
 def jsd_pct(p: np.ndarray, q: np.ndarray, eps: float = 1e-6) -> float:
     """Base-2 JSD, mirrors mc_simu.tune_to_market.jsd so numbers match run logs."""
     p = np.maximum(p, eps)
@@ -94,17 +111,26 @@ st.caption("Model: ELO + squad-MV + star (static, locked pre-tournament) — re-
 
 day = st.sidebar.selectbox("Snapshot day", [pd.Timestamp(d).date() for d in reversed(dates)])
 top_n = st.sidebar.slider("Teams shown in charts", 10, 48, 20)
+market_src = st.sidebar.radio(
+    "Market reference", ["Consensus", "Polymarket", "Kalshi"],
+    help="Consensus = normalized median of platform mids, exactly as logged by the daily run. "
+         "Picking one platform recomputes every edge, JSD and L1 against that platform's mid "
+         "prices, renormalized over only the teams it quotes.")
+SRC_COL = {"Consensus": "consensus_pct", "Polymarket": "pm_pct", "Kalshi": "kalshi_pct"}
+df = apply_market_source(df, SRC_COL[market_src])
 snap = df[df["date"] == pd.Timestamp(day)].sort_values("model_pct", ascending=False)
+st.sidebar.caption(f"{market_src}: {len(snap)} teams quoted on {day}")
 
-l1 = (snap["model_pct"] - snap["consensus_pct"]).abs().sum()
-j = jsd_pct(snap["model_pct"].to_numpy(), snap["consensus_pct"].to_numpy())
+l1 = (snap["model_pct"] - snap["mkt_pct"]).abs().sum()
+j = jsd_pct(snap["model_pct"].to_numpy(), snap["mkt_pct"].to_numpy())
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("Days tracked", len(dates),
           help="Number of daily snapshots in the log (one per cron run).")
-m2.metric("JSD vs market", f"{j:.4f}",
-          help="Jensen-Shannon divergence (base 2) between the model's 48-team champion "
-               "distribution and the market consensus distribution. 0 = identical, "
-               "1 = no overlap. Our single closeness number — same figure the daily run logs.")
+m2.metric(f"JSD vs {market_src}", f"{j:.4f}",
+          help="Jensen-Shannon divergence (base 2) between the model's champion "
+               "distribution and the selected market's distribution. 0 = identical, "
+               "1 = no overlap. Our single closeness number — the daily run logs the "
+               "consensus variant of this figure.")
 m3.metric("L1 distance", f"{l1:.1f} pp",
           help="Sum of |model − market| over all teams, in percentage points. "
                "It double-counts: 23 pp means ~11.5 pp of probability mass sits on "
@@ -176,23 +202,23 @@ with tab_scatter:
                "On the dashed diagonal the two agree; vertical distance from it is the edge "
                "(dot colour). Log scale spreads out the longshots in the bottom-left.")
     log_axes = st.toggle("Log scale (see the longshot tail)", value=True)
-    s = snap[(snap["model_pct"] > 0) & (snap["consensus_pct"] > 0)]
+    s = snap[(snap["model_pct"] > 0) & (snap["mkt_pct"] > 0)]
     n_zero = len(snap) - len(s)
     if n_zero:
         st.caption(f"{n_zero} teams hidden: model gives them 0% (log axes cannot show 0)")
-    lim_lo = min(s["model_pct"].min(), s["consensus_pct"].min()) * 0.7
-    lim_hi = max(s["model_pct"].max(), s["consensus_pct"].max()) * 1.3
+    lim_lo = min(s["model_pct"].min(), s["mkt_pct"].min()) * 0.7
+    lim_hi = max(s["model_pct"].max(), s["mkt_pct"].max()) * 1.3
     fig = go.Figure()
     fig.add_shape(type="line", x0=lim_lo, y0=lim_lo, x1=lim_hi, y1=lim_hi,
                   line=dict(color="gray", width=1.5, dash="dash"))
-    labels = [t if (r["model_pct"] > 2 or r["consensus_pct"] > 2) else ""
+    labels = [t if (r["model_pct"] > 2 or r["mkt_pct"] > 2) else ""
               for t, (_, r) in zip(s["team"], s.iterrows())]
     ft = np.log10 if log_axes else np.asarray
     span = float(ft(lim_hi) - ft(lim_lo))
-    xn = (ft(s["consensus_pct"].to_numpy(dtype=float)) - ft(lim_lo)) / span
+    xn = (ft(s["mkt_pct"].to_numpy(dtype=float)) - ft(lim_lo)) / span
     yn = (ft(s["model_pct"].to_numpy(dtype=float)) - ft(lim_lo)) / span
     fig.add_scatter(
-        x=s["consensus_pct"], y=s["model_pct"], mode="markers+text",
+        x=s["mkt_pct"], y=s["model_pct"], mode="markers+text",
         text=labels,
         textposition=spread_labels(xn, yn, [bool(t) for t in labels]),
         textfont_size=10,
@@ -206,7 +232,7 @@ with tab_scatter:
     fig.update_layout(template=TPL, height=620, showlegend=False,
                       title="Model vs market — points above the dashed line = model higher than market<br>"
                             "<sup>distance from the diagonal IS the edge; the tail shows the favorite-longshot pattern</sup>",
-                      xaxis={**ax, "title": "market consensus (%)"},
+                      xaxis={**ax, "title": f"{market_src} (%)"},
                       yaxis={**ax, "title": "model (%)"})
     st.plotly_chart(fig, width="stretch")
 
@@ -227,7 +253,7 @@ with tab_traj:
         c = palette[i % len(palette)]
         fig.add_scatter(x=subt["date"], y=subt["model_pct"], name=t,
                         mode="lines+markers", line=dict(color=c, width=2))
-        fig.add_scatter(x=subt["date"], y=subt["consensus_pct"], name=f"{t} market",
+        fig.add_scatter(x=subt["date"], y=subt["mkt_pct"], name=f"{t} {market_src}",
                         mode="markers", marker=dict(color=c, symbol="x", size=10),
                         showlegend=False)
     x0 = pd.Timestamp(min(dates)) - pd.Timedelta(hours=12)
@@ -246,8 +272,8 @@ with tab_stab:
     c_l1, c_hm = st.columns([1, 2])
     daily = df.groupby("date").apply(
         lambda g: pd.Series({
-            "L1 (pp)": (g["model_pct"] - g["consensus_pct"]).abs().sum(),
-            "JSD": jsd_pct(g["model_pct"].to_numpy(), g["consensus_pct"].to_numpy()),
+            "L1 (pp)": (g["model_pct"] - g["mkt_pct"]).abs().sum(),
+            "JSD": jsd_pct(g["model_pct"].to_numpy(), g["mkt_pct"].to_numpy()),
         }), include_groups=False).reset_index()
     fig = px.line(daily, x="date", y="L1 (pp)", markers=True, template=TPL, height=300,
                   title="Total model–market distance per day")
@@ -256,7 +282,7 @@ with tab_stab:
                   title="JSD per day")
     c_l1.plotly_chart(fig, width="stretch")
 
-    top_teams = (df.groupby("team")["consensus_pct"].max()
+    top_teams = (df.groupby("team")["mkt_pct"].max()
                  .sort_values(ascending=False).head(top_n).index)
     piv = (df[df["team"].isin(top_teams)]
            .pivot_table(index="team", columns="date", values="abs_pp")
