@@ -5,6 +5,9 @@ on:
     - cron: "30 8 * * *"   # 08:30 UTC daily, after the previous matchday fully settles
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -16,16 +19,30 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install numpy scipy pandas requests
+      - name: Fetch played results from football-data.org
+        env:
+          FOOTBALL_DATA_TOKEN: ${{ secrets.FOOTBALL_DATA_TOKEN }}
+        run: PYTHONPATH=src python -m mc_simu.fetch_played | tee run.log
+      - name: Push updated played CSV
+        run: |
+          if [ -n "$(git status --porcelain data/mc_simu/wc2026_played.csv)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/mc_simu/wc2026_played.csv
+            git commit -m "data: auto-update wc2026_played from football-data.org"
+            git pull --rebase origin main
+            git push
+          fi
       - name: Daily conditional rerun vs live market
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: PYTHONPATH=src python -m mc_simu.run_daily --n 50000 | tee run.log
+        run: PYTHONPATH=src python -m mc_simu.run_daily --n 50000 | tee -a run.log
       - name: Job summary
         if: always()
         run: |
           echo '```' >> "$GITHUB_STEP_SUMMARY"
-          tail -20 run.log >> "$GITHUB_STEP_SUMMARY" || true
+          tail -40 run.log >> "$GITHUB_STEP_SUMMARY" || true
           echo '```' >> "$GITHUB_STEP_SUMMARY"
       - name: Keep CSV artifact as backup
         if: always()

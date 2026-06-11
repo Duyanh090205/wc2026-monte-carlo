@@ -104,10 +104,19 @@ python -m mc_simu.replay_wc_conditioned --year 2022 --plot
 streamlit run dashboard/mc_tracker.py
 ```
 
-Automation: `.github/workflows/daily.yml` runs `run_daily` at 08:30 UTC daily
-(repo secrets `SUPABASE_URL` + `SUPABASE_SERVICE_KEY`); table schema in
-`deploy/supabase_schema.sql`. During the tournament, update
-`data/mc_simu/wc2026_played.csv` and push — the next cron run re-conditions on it.
+Automation: `.github/workflows/daily.yml` runs at 08:30 UTC daily: first
+`fetch_played` pulls finished WC2026 results from football-data.org (secret
+`FOOTBALL_DATA_TOKEN`; skipped when absent) and commits the updated
+`data/mc_simu/wc2026_played.csv` back to main, then `run_daily` re-conditions
+on it and upserts Supabase (secrets `SUPABASE_URL` + `SUPABASE_SERVICE_KEY`);
+table schema in `deploy/supabase_schema.sql`. Manual fallback: edit
+`wc2026_played.csv` by hand and push — any fetch failure (API down, unmapped
+team name, unplaceable KO pair) degrades to a warning and leaves the CSV alone.
+
+```powershell
+# Auto-fetch played results locally (same script CI runs before run_daily)
+$env:FOOTBALL_DATA_TOKEN = "<token>"; python -m mc_simu.fetch_played --dry-run
+```
 
 ---
 

@@ -29,7 +29,8 @@ that stays in the original repo.
   distribution-closeness metric, never a training signal.
 - **Must remain runnable offline.** Wikipedia HTML snapshots committed under
   `data/mc_simu/cache/`. No live-network dependencies in the predict path
-  (market fetch in `run_daily.py` is the one deliberate network call, and it degrades).
+  (the two deliberate network calls — market fetch in `run_daily.py`, results
+  fetch in `fetch_played.py` — both degrade gracefully).
 - **Production model (locked):** ELO (eloratings as-of) + MV blend alpha=0.5 +
   star X=15, D=1400, diag=0.20 (LOTO-CV validated). Static during the tournament —
   daily rerun re-conditions on the bracket, never re-fits.
