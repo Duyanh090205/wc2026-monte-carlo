@@ -188,7 +188,9 @@ with tab_traj:
         st.info("Trajectories build up as daily snapshots accumulate — come back after a few days. "
                 "Backtest preview of what this becomes: WC2022 replay in mc_simu/audits/.")
     default_teams = list(snap.head(6)["team"])
-    teams = st.multiselect("Teams", sorted(df["team"].unique()), default=default_teams)
+    teams = st.multiselect("Teams (max 12 — beyond that colours stop being readable)",
+                           sorted(df["team"].unique()), default=default_teams,
+                           max_selections=12)
     fig = go.Figure()
     palette = px.colors.qualitative.Plotly
     for i, t in enumerate(teams):
@@ -199,9 +201,12 @@ with tab_traj:
         fig.add_scatter(x=subt["date"], y=subt["consensus_pct"], name=f"{t} market",
                         mode="markers", marker=dict(color=c, symbol="x", size=10),
                         showlegend=False)
+    x0 = pd.Timestamp(min(dates)) - pd.Timedelta(hours=12)
+    x1 = pd.Timestamp(max(dates)) + pd.Timedelta(hours=12)
     fig.update_layout(template=TPL, height=520, hovermode="x unified",
                       title="Champion probability — model (line) vs market (✕)",
-                      yaxis_title="champion prob (%)")
+                      yaxis_title="champion prob (%)",
+                      xaxis=dict(range=[x0, x1], tickformat="%b %d", dtick=86_400_000))
     st.plotly_chart(fig, width="stretch")
 
 
