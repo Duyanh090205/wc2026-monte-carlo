@@ -409,6 +409,21 @@ with tab_bracket:
         st.info("Per-match predictions land with the next daily run.")
     else:
         mp = pd.read_csv(pred_csv)
+        has_mle = "p_home_mle" in mp.columns and mp["p_home_mle"].notna().any()
+        if MODEL_COL[model_src] != "model_pct" and not has_mle:
+            st.caption("Bracket shows the Production view — per-match mle columns "
+                       "land with the next daily run.")
+        elif model_src == "MLE strength":
+            mp[["p_home", "p_draw", "p_away"]] = \
+                mp[["p_home_mle", "p_draw_mle", "p_away_mle"]].to_numpy()
+        elif model_src == "Pool 50/50":
+            gh = np.sqrt(mp["p_home"].fillna(0) * mp["p_home_mle"].fillna(0))
+            gd = np.sqrt(mp["p_draw"].fillna(0) * mp["p_draw_mle"].fillna(0))
+            ga = np.sqrt(mp["p_away"].fillna(0) * mp["p_away_mle"].fillna(0))
+            tot = gh + gd + ga
+            mp["p_home"] = gh / tot
+            mp["p_draw"] = np.where(mp["p_draw"].notna(), gd / tot, np.nan)
+            mp["p_away"] = ga / tot
         with st.expander("How to read this tab"):
             st.markdown(
                 "- **Knockout tree** — the bracket structure is FIFA's fixed draw; it fills "

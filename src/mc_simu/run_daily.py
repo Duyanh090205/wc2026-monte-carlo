@@ -140,31 +140,46 @@ def mle_champion_probs(played, n: int, seed: int) -> dict[str, float]:
 KO_STAGE = {**{m: "r32" for m in range(73, 89)}, **{m: "r16" for m in range(89, 97)},
             **{m: "qf" for m in range(97, 101)}, 101: "sf", 102: "sf", 104: "final"}
 PRED_COLS = ["stage", "group", "match_id", "home_team", "away_team",
-             "p_home", "p_draw", "p_away", "home_goals", "away_goals", "winner"]
+             "p_home", "p_draw", "p_away",
+             "p_home_mle", "p_draw_mle", "p_away_mle",
+             "home_goals", "away_goals", "winner"]
+
+
+def _wdl_from_cdf(cdfs, i) -> tuple[float, float, float]:
+    grid = np.diff(np.concatenate([[0.0], cdfs[i]])).reshape(9, 9)
+    return (round(float(np.tril(grid, -1).sum()), 4),
+            round(float(np.trace(grid)), 4),
+            round(float(np.triu(grid, 1).sum()), 4))
 
 
 def export_match_predictions(played, out_csv: Path) -> int:
-    """Per-match model view + results for the dashboard bracket tab.
+    """Per-match view + results for the dashboard bracket tab, both sources.
 
-    Group W/D/L probs are static (locked model, known fixtures). KO rows appear
+    Group W/D/L probs are static (locked models, known fixtures). KO rows appear
     as the bracket resolves from played results; p_home = advance probability.
+    p_*_mle columns carry the parallel mle_strength source over the same bundle.
     """
+    from mc_simu.strength_mle import load_strengths_artifact, make_mle_predictor
+
     sg.ELO_GOALS_DENOMINATOR = 1400.0
     bundle = load_wc2026_bundle(production_ratings(), params=ModelParams(diagonal_inflation=0.20))
     sim = build_sim_context(bundle)
+    sim_mle = build_sim_context(
+        bundle, predictor=make_mle_predictor(load_strengths_artifact(STRENGTH_ARTIFACT)))
 
     rows = []
     for g in sorted(sim.group_team_pairs):
         cdfs = sim.group_cdfs_per_group[g]
+        cdfs_mle = sim_mle.group_cdfs_per_group[g]
         for i, (h, a) in enumerate(sim.group_team_pairs[g]):
-            grid = np.diff(np.concatenate([[0.0], cdfs[i]])).reshape(9, 9)
+            ph, pd_, pa = _wdl_from_cdf(cdfs, i)
+            ph_m, pd_m, pa_m = _wdl_from_cdf(cdfs_mle, i)
             real = played.group_scores.get(frozenset((h, a)))
             rows.append({
                 "stage": "group", "group": g, "match_id": "",
                 "home_team": h, "away_team": a,
-                "p_home": round(float(np.tril(grid, -1).sum()), 4),
-                "p_draw": round(float(np.trace(grid)), 4),
-                "p_away": round(float(np.triu(grid, 1).sum()), 4),
+                "p_home": ph, "p_draw": pd_, "p_away": pa,
+                "p_home_mle": ph_m, "p_draw_mle": pd_m, "p_away_mle": pa_m,
                 "home_goals": real[h] if real else "",
                 "away_goals": real[a] if real else "",
                 "winner": "",
@@ -178,11 +193,15 @@ def export_match_predictions(played, out_csv: Path) -> int:
             known[mid] = frozenset((played.ko_winners[left], played.ko_winners[right]))
     for mid in sorted(known):
         a, b = sorted(known[mid])
+        adv = sim.ko_advance[(a, b)]
+        adv_m = sim_mle.ko_advance[(a, b)]
         rows.append({
             "stage": KO_STAGE[mid], "group": "", "match_id": mid,
             "home_team": a, "away_team": b,
-            "p_home": round(sim.ko_advance[(a, b)], 4), "p_draw": "",
-            "p_away": round(1 - sim.ko_advance[(a, b)], 4),
+            "p_home": round(adv, 4), "p_draw": "",
+            "p_away": round(1 - adv, 4),
+            "p_home_mle": round(adv_m, 4), "p_draw_mle": "",
+            "p_away_mle": round(1 - adv_m, 4),
             "home_goals": "", "away_goals": "",
             "winner": played.ko_winners.get(mid, ""),
         })
