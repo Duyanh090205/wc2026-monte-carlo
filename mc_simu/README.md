@@ -113,6 +113,13 @@ table schema in `deploy/supabase_schema.sql`. Manual fallback: edit
 `wc2026_played.csv` by hand and push — any fetch failure (API down, unmapped
 team name, unplaceable KO pair) degrades to a warning and leaves the CSV alone.
 
+Failure hedges: a 13:00 UTC retry cron re-runs the day (no-op when the morning
+snapshot already landed and no new results arrived); a FairLine market outage
+skips that day's daily_log honestly (no fabricated prices) while match
+predictions still refresh — a later `workflow_dispatch` backfills the day; an
+mle_strength failure blanks only the mle/pool columns, never the production
+snapshot. CI pins numpy/scipy/pandas/requests to tested minor versions.
+
 ```powershell
 # Auto-fetch played results locally (same script CI runs before run_daily)
 $env:FOOTBALL_DATA_TOKEN = "<token>"; python -m mc_simu.fetch_played --dry-run

@@ -3,6 +3,7 @@ name: daily-tracker
 on:
   schedule:
     - cron: "30 8 * * *"   # 08:30 UTC daily, after the previous matchday fully settles
+    - cron: "0 13 * * *"   # self-heal retry: no-op when the morning snapshot landed
   workflow_dispatch:
 
 permissions:
@@ -18,12 +19,13 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install numpy scipy pandas requests
+      - run: pip install "numpy==2.4.*" "scipy==1.17.*" "pandas==3.0.*" "requests==2.34.*"
       - name: Fetch played results from football-data.org
         env:
           FOOTBALL_DATA_TOKEN: ${{ secrets.FOOTBALL_DATA_TOKEN }}
         run: PYTHONPATH=src python -m mc_simu.fetch_played | tee run.log
       - name: Push updated played CSV
+        id: played
         run: |
           if [ -n "$(git status --porcelain data/mc_simu/wc2026_played.csv)" ]; then
             git config user.name "github-actions[bot]"
@@ -32,13 +34,39 @@ jobs:
             git commit -m "data: auto-update wc2026_played from football-data.org"
             git pull --rebase origin main
             git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
+      - name: Skip when snapshot already landed and nothing new
+        id: guard
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          SKIP=false
+          if [ "${{ github.event_name }}" = "schedule" ] && \
+             [ "${{ steps.played.outputs.changed }}" = "false" ]; then
+            TODAY=$(date -u +%F)
+            COUNT=$(curl -s --max-time 20 \
+              -H "apikey: $SUPABASE_SERVICE_KEY" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+              "$SUPABASE_URL/rest/v1/daily_log?date=eq.$TODAY&select=team&limit=1" \
+              | grep -c '"team"' || true)
+            if [ "$COUNT" -gt 0 ]; then
+              SKIP=true
+              echo "Snapshot for $TODAY already in Supabase, no new results — skipping sims" | tee -a run.log
+            fi
+          fi
+          echo "skip=$SKIP" >> "$GITHUB_OUTPUT"
       - name: Daily conditional rerun vs live market
+        if: steps.guard.outputs.skip != 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: PYTHONPATH=src python -m mc_simu.run_daily --n 1000000 | tee -a run.log
       - name: Push match predictions
+        if: steps.guard.outputs.skip != 'true'
         run: |
           if [ -n "$(git status --porcelain data/mc_simu/wc2026_match_predictions.csv)" ]; then
             git config user.name "github-actions[bot]"
