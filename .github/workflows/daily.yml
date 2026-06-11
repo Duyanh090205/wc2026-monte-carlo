@@ -11,7 +11,7 @@ permissions:
 jobs:
   run:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -37,7 +37,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: PYTHONPATH=src python -m mc_simu.run_daily --n 100000 | tee -a run.log
+        run: PYTHONPATH=src python -m mc_simu.run_daily --n 1000000 | tee -a run.log
       - name: Job summary
         if: always()
         run: |
