@@ -149,8 +149,9 @@ with tab_scatter:
     lim_lo = min(s["model_pct"].min(), s["consensus_pct"].min()) * 0.7
     lim_hi = max(s["model_pct"].max(), s["consensus_pct"].max()) * 1.3
     fig = go.Figure()
-    fig.add_scatter(x=[lim_lo, lim_hi], y=[lim_lo, lim_hi], mode="lines",
-                    line=dict(color="gray", dash="dash"), name="model = market")
+    d0, d1 = (np.log10(lim_lo), np.log10(lim_hi)) if log_axes else (lim_lo, lim_hi)
+    fig.add_shape(type="line", x0=d0, y0=d0, x1=d1, y1=d1,
+                  line=dict(color="gray", width=1.5, dash="dash"))
     labels = [t if (r["model_pct"] > 2 or r["consensus_pct"] > 2) else ""
               for t, (_, r) in zip(s["team"], s.iterrows())]
     ft = np.log10 if log_axes else np.asarray
@@ -169,8 +170,8 @@ with tab_scatter:
     ax = dict(type="log" if log_axes else "linear", range=None)
     if log_axes:
         ax["range"] = [np.log10(lim_lo), np.log10(lim_hi)]
-    fig.update_layout(template=TPL, height=620,
-                      title="Model vs market — points above the line = model higher than market<br>"
+    fig.update_layout(template=TPL, height=620, showlegend=False,
+                      title="Model vs market — points above the dashed line = model higher than market<br>"
                             "<sup>distance from the diagonal IS the edge; the tail shows the favorite-longshot pattern</sup>",
                       xaxis={**ax, "title": "market consensus (%)"},
                       yaxis={**ax, "title": "model (%)"})
