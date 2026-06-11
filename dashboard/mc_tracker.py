@@ -60,8 +60,10 @@ def load_log() -> pd.DataFrame:
         st.warning("daily_log is empty — first scheduled run hasn't landed yet")
         st.stop()
     df["date"] = pd.to_datetime(df["date"])
-    for c in ("model_pct", "pm_pct", "kalshi_pct", "consensus_pct", "abs_pp", "rel_pct"):
-        df[c] = pd.to_numeric(df[c], errors="coerce")
+    for c in ("model_pct", "pm_pct", "kalshi_pct", "consensus_pct", "abs_pp", "rel_pct",
+              "mle_pct", "pool_pct"):
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
     return df
 
 
@@ -221,8 +223,27 @@ market_src = st.sidebar.radio(
          "Picking one platform recomputes every edge, JSD and L1 against that platform's mid "
          "prices, renormalized over only the teams it quotes.")
 SRC_COL = {"Consensus": "consensus_pct", "Polymarket": "pm_pct", "Kalshi": "kalshi_pct"}
+MODEL_COL = {"Production (ELO+MV+star)": "model_pct",
+             "MLE strength": "mle_pct",
+             "Pool 50/50": "pool_pct"}
+model_choices = [k for k, v in MODEL_COL.items()
+                 if v == "model_pct" or (v in df.columns and df[v].notna().any())]
+model_src = st.sidebar.radio(
+    "Model source", model_choices,
+    help="Production = locked ELO+MV+star. MLE strength = parallel weighted-MLE "
+         "rating source (results-only, frozen artifact). Pool = 50/50 log-opinion "
+         "pool of the two — the consensus prior. Every edge, JSD and chart "
+         "recomputes against the picked source. Sources other than Production "
+         "exist from the date the parallel tracking went live.")
+if MODEL_COL[model_src] != "model_pct":
+    df = df[df[MODEL_COL[model_src]].notna()].copy()
+    df["model_pct"] = df[MODEL_COL[model_src]]
 df = apply_market_source(df, SRC_COL[market_src])
 snap = df[df["date"] == pd.Timestamp(day)].sort_values("model_pct", ascending=False)
+if snap.empty:
+    st.warning(f"No {model_src} rows on {day} — parallel sources start from the day "
+               "the dual-model tracking went live. Pick a later snapshot day.")
+    st.stop()
 st.sidebar.caption(f"{market_src}: {len(snap)} teams quoted on {day}")
 with st.sidebar.expander("Data sources"):
     st.markdown(
