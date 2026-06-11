@@ -37,7 +37,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: PYTHONPATH=src python -m mc_simu.run_daily --n 50000 | tee -a run.log
+        run: PYTHONPATH=src python -m mc_simu.run_daily --n 100000 | tee -a run.log
       - name: Job summary
         if: always()
         run: |

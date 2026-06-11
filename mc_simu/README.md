@@ -94,7 +94,7 @@ Output: `data/mc_simu/mc_wc2026_v1_<N>_seed<S>.csv` (champion + group winner pro
 # Daily conditional rerun vs live market — appends a snapshot row per team to
 # data/mc_simu/daily_log.csv (and upserts to Supabase when SUPABASE_URL +
 # SUPABASE_SERVICE_KEY are set). Locks results from data/mc_simu/wc2026_played.csv.
-python -m mc_simu.run_daily --n 50000
+python -m mc_simu.run_daily --n 100000   # CI uses 100k; default 50k for quick local runs
 
 # Round-by-round backtest of the conditioning harness on a past WC,
 # with archived oddschecker market overlay (Wayback)

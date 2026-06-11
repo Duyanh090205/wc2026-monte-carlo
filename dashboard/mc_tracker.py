@@ -181,7 +181,7 @@ with tab_today:
     rel = rel[rel["model_pct"] >= mc_floor]
     n_noise = len(snap) - len(rel)
     if n_noise:
-        c_rel.caption(f"{n_noise} longshots hidden (model < {mc_floor}% = under ~10 of 50k MC hits): "
+        c_rel.caption(f"{n_noise} longshots hidden (model < {mc_floor}% = under ~20 of 100k MC hits): "
                       "their relative edge is sampling noise, not signal — read them on the absolute chart")
     rel = rel.reindex(rel["rel_pct"].abs().sort_values(ascending=False).index).head(top_n)
     rel = rel.sort_values("rel_pct")

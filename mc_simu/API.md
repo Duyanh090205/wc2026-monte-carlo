@@ -125,6 +125,6 @@ and read the `Content-Range` response header. Full reference:
   (`https://seal-app-yatxw.ondigitalocean.app/api/docs`).
 - **Coverage:** consensus/Polymarket quote all 48 finalists; Kalshi lists ~34
   (longshots missing). `model_pct` can be 0.000 for extreme longshots
-  (sub-1-in-50,000 MC resolution).
+  (sub-1-in-100,000 MC resolution).
 - Free-tier Supabase — please keep polling to a few requests/minute.
 - Dashboard with the same data: Streamlit app (`dashboard/mc_tracker.py`).
