@@ -99,16 +99,41 @@ snap = df[df["date"] == pd.Timestamp(day)].sort_values("model_pct", ascending=Fa
 l1 = (snap["model_pct"] - snap["consensus_pct"]).abs().sum()
 j = jsd_pct(snap["model_pct"].to_numpy(), snap["consensus_pct"].to_numpy())
 m1, m2, m3, m4 = st.columns(4)
-m1.metric("Days tracked", len(dates))
-m2.metric("JSD vs market", f"{j:.4f}")
-m3.metric("L1 distance", f"{l1:.1f} pp")
-m4.metric("Max |edge|", f"{snap['abs_pp'].abs().max():.2f} pp")
+m1.metric("Days tracked", len(dates),
+          help="Number of daily snapshots in the log (one per cron run).")
+m2.metric("JSD vs market", f"{j:.4f}",
+          help="Jensen-Shannon divergence (base 2) between the model's 48-team champion "
+               "distribution and the market consensus distribution. 0 = identical, "
+               "1 = no overlap. Our single closeness number — same figure the daily run logs.")
+m3.metric("L1 distance", f"{l1:.1f} pp",
+          help="Sum of |model − market| over all teams, in percentage points. "
+               "It double-counts: 23 pp means ~11.5 pp of probability mass sits on "
+               "different teams than the market puts it on.")
+m4.metric("Max |edge|", f"{snap['abs_pp'].abs().max():.2f} pp",
+          help="Largest single-team gap |model − market| in today's snapshot.")
+
+with st.expander("How to read these numbers"):
+    st.markdown(
+        "- **JSD / L1** — distribution-level closeness between model and market; expect them "
+        "to be roughly stable day to day. A sudden jump = model and market disagree about "
+        "newly revealed information (a result, an injury) — that day is worth a look.\n"
+        "- **Absolute edge (abs pp)** — `model% − market%` per team, in percentage points. "
+        "Positive (green): model rates the team higher than the market.\n"
+        "- **Relative edge (rel %)** — `(market − model) / model`. +100% = the market prices "
+        "the team at double the model's probability. Large positive values on small teams "
+        "are the classic favorite-longshot premium, not necessarily mispricing.\n"
+        "- The model is **static** (locked pre-tournament): day-to-day movement comes only "
+        "from re-conditioning on played results, never from re-fitting. So a *stable* bias "
+        "vs the market is expected and fine — the signal is a *change* in that bias.")
 
 tab_today, tab_scatter, tab_traj, tab_stab, tab_data = st.tabs(
     ["Today's edge", "Model vs market", "Trajectories", "Bias stability", "Data"])
 
 
 with tab_today:
+    st.caption("Where model and market disagree today. Left: the raw gap per team. "
+               "Right: the same gap relative to the model's own number — this is where the "
+               "longshot premium becomes visible.")
     c_abs, c_rel = st.columns(2)
     sub = snap.reindex(snap["abs_pp"].abs().sort_values(ascending=False).index).head(top_n)
     sub = sub.sort_values("abs_pp")
@@ -147,6 +172,9 @@ with tab_today:
 
 
 with tab_scatter:
+    st.caption("One dot per team: x = what the market says, y = what the model says. "
+               "On the dashed diagonal the two agree; vertical distance from it is the edge "
+               "(dot colour). Log scale spreads out the longshots in the bottom-left.")
     log_axes = st.toggle("Log scale (see the longshot tail)", value=True)
     s = snap[(snap["model_pct"] > 0) & (snap["consensus_pct"] > 0)]
     n_zero = len(snap) - len(s)
@@ -184,13 +212,14 @@ with tab_scatter:
 
 
 with tab_traj:
+    st.caption("Champion probability through the tournament: solid line = model "
+               "(re-conditioned daily on results), ✕ = market consensus the same day. "
+               "Diverging line and ✕ = model and market reading the bracket differently.")
     if len(dates) == 1:
         st.info("Trajectories build up as daily snapshots accumulate — come back after a few days. "
                 "Backtest preview of what this becomes: WC2022 replay in mc_simu/audits/.")
     default_teams = list(snap.head(6)["team"])
-    teams = st.multiselect("Teams (max 12 — beyond that colours stop being readable)",
-                           sorted(df["team"].unique()), default=default_teams,
-                           max_selections=12)
+    teams = st.multiselect("Teams", sorted(df["team"].unique()), default=default_teams)
     fig = go.Figure()
     palette = px.colors.qualitative.Plotly
     for i, t in enumerate(teams):
@@ -211,6 +240,9 @@ with tab_traj:
 
 
 with tab_stab:
+    st.caption("Is the model's bias vs the market stable? Left: total distance per day "
+               "(JSD + L1) — flat is good. Right: per-team edge heatmap — a row keeping its "
+               "colour is an understood bias; a row flipping colour is the anomaly to investigate.")
     c_l1, c_hm = st.columns([1, 2])
     daily = df.groupby("date").apply(
         lambda g: pd.Series({
@@ -239,6 +271,9 @@ with tab_stab:
 
 
 with tab_data:
+    st.caption("Raw snapshot for the selected day. pm/kalshi = platform mid prices; "
+               "consensus = their normalized median; blank cells = platform doesn't quote "
+               "that team. Download gives the full multi-day log.")
     show = snap[["team", "model_pct", "pm_pct", "kalshi_pct", "consensus_pct", "abs_pp", "rel_pct"]]
     st.dataframe(
         show.style.background_gradient(subset=["abs_pp"], cmap="RdYlGn", vmin=-3, vmax=3)
