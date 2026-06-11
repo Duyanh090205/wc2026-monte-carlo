@@ -9,6 +9,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: daily-tracker
+  cancel-in-progress: false
+
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -53,7 +57,7 @@ jobs:
               -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
               "$SUPABASE_URL/rest/v1/daily_log?date=eq.$TODAY&select=team&limit=1" \
               | grep -c '"team"' || true)
-            if [ "$COUNT" -gt 0 ]; then
+            if [ "${COUNT:-0}" -gt 0 ]; then
               SKIP=true
               echo "Snapshot for $TODAY already in Supabase, no new results — skipping sims" | tee -a run.log
             fi
