@@ -77,6 +77,39 @@ def load_group_membership() -> dict[str, list[str]]:
         return {g: list(t) for g, t in json.load(f)["groups"].items()}
 
 
+def load_group_fixture_dates() -> dict[frozenset, str]:
+    out: dict[frozenset, str] = {}
+    with (DATA / "wc2026_fixtures.csv").open(newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            if r["stage"] == "group":
+                out[frozenset((r["home_team"], r["away_team"]))] = r["date"]
+    return out
+
+
+def plausible_score(hg, ag) -> bool:
+    return 0 <= int(hg) <= 15 and 0 <= int(ag) <= 15
+
+
+def group_fixture_issue(home: str, away: str, api_date: str,
+                        group_of: dict[str, str],
+                        fixture_dates: dict[frozenset, str]) -> str | None:
+    """Reason string when a reported group result cannot be a real fixture.
+
+    Catches gross source errors (mislabeled competition, wrong pairing) —
+    the +-3 day window tolerates timezone/reschedule quirks but rejects
+    matches attributed weeks off their scheduled slot.
+    """
+    if group_of.get(home) is None or group_of.get(home) != group_of.get(away):
+        return "not a scheduled group fixture (teams not in the same group)"
+    sched = fixture_dates.get(frozenset((home, away)), "")
+    if sched and sched != "TBD" and len(api_date) >= 10:
+        from datetime import date
+        delta = abs((date.fromisoformat(api_date[:10]) - date.fromisoformat(sched)).days)
+        if delta > 3:
+            return f"dated {api_date[:10]} but scheduled {sched}"
+    return None
+
+
 def canonical_team(api_team: dict, by_norm: dict[str, str]) -> str | None:
     for cand in (api_team.get("name"), api_team.get("shortName")):
         if not cand:
@@ -236,6 +269,8 @@ def main(argv: list[str] | None = None) -> int:
     banner(f"fetch_played: {len(finished)} finished matches from football-data.org")
     membership = load_group_membership()
     by_norm = {_norm(t): t for teams in membership.values() for t in teams}
+    group_of = {t: g for g, teams in membership.items() for t in teams}
+    fixture_dates = load_group_fixture_dates()
 
     existing = load_existing_rows(args.csv)
     group_scores: dict[frozenset, dict[str, int]] = {}
@@ -263,7 +298,16 @@ def main(argv: list[str] | None = None) -> int:
         if hg is None or ag is None:
             print(f"fetch_played: WARNING no fullTime score for {home} vs {away} -- skipped")
             continue
+        if not plausible_score(hg, ag):
+            print(f"fetch_played: WARNING implausible score {hg}-{ag} for "
+                  f"{home} vs {away} -- skipped")
+            continue
         if stage == "GROUP_STAGE":
+            issue = group_fixture_issue(home, away, str(m.get("utcDate", "")),
+                                        group_of, fixture_dates)
+            if issue:
+                print(f"fetch_played: WARNING {home} vs {away}: {issue} -- skipped")
+                continue
             group_scores[frozenset((home, away))] = {home: int(hg), away: int(ag)}
             fetched.append({"stage": "group", "match_id": "", "home_team": home,
                             "away_team": away, "home_goals": str(int(hg)),
@@ -327,9 +371,12 @@ __all__ = [
     "canonical_team",
     "fetch_finished",
     "find_ko_match_id",
+    "group_fixture_issue",
     "ko_winner",
     "load_existing_rows",
+    "load_group_fixture_dates",
     "merge_rows",
+    "plausible_score",
     "resolve_r32_pairings",
     "main",
 ]

@@ -13,8 +13,11 @@ from pathlib import Path
 from mc_simu.fetch_played import (
     canonical_team,
     find_ko_match_id,
+    group_fixture_issue,
     ko_winner,
+    load_group_fixture_dates,
     merge_rows,
+    plausible_score,
     resolve_r32_pairings,
 )
 from mc_simu.tournaments.wc2026 import GROUP_LETTERS, R32_BRACKET
@@ -121,6 +124,47 @@ class TestResolveR32:
         assert "E1" in pairs[74]
         third = next(iter(pairs[74] - {"E1"}))
         assert third in {f"{g}3" for g in "ABCDEFGH"}
+
+
+# ── Source validation guards ──────────────────────────────────────────────────
+
+
+class TestSourceGuards:
+    GROUP_OF = {"Mexico": "A", "South Africa": "A", "Canada": "B"}
+    DATES = {frozenset(("Mexico", "South Africa")): "2026-06-11"}
+
+    def test_plausible_scores(self) -> None:
+        assert plausible_score(2, 1)
+        assert plausible_score(0, 0)
+        assert not plausible_score(16, 0)
+        assert not plausible_score(-1, 2)
+
+    def test_same_group_on_schedule_is_valid(self) -> None:
+        assert group_fixture_issue("Mexico", "South Africa", "2026-06-11T20:00:00Z",
+                                   self.GROUP_OF, self.DATES) is None
+
+    def test_cross_group_pairing_rejected(self) -> None:
+        issue = group_fixture_issue("Mexico", "Canada", "2026-06-11T20:00:00Z",
+                                    self.GROUP_OF, self.DATES)
+        assert issue is not None and "not a scheduled group fixture" in issue
+
+    def test_unknown_team_rejected(self) -> None:
+        assert group_fixture_issue("Atlantis", "Mexico", "2026-06-11T20:00:00Z",
+                                   self.GROUP_OF, self.DATES) is not None
+
+    def test_date_weeks_off_rejected(self) -> None:
+        issue = group_fixture_issue("Mexico", "South Africa", "2026-07-30T20:00:00Z",
+                                    self.GROUP_OF, self.DATES)
+        assert issue is not None and "scheduled" in issue
+
+    def test_one_day_slack_tolerated(self) -> None:
+        assert group_fixture_issue("Mexico", "South Africa", "2026-06-12T01:00:00Z",
+                                   self.GROUP_OF, self.DATES) is None
+
+    def test_real_fixture_table_covers_all_72(self) -> None:
+        dates = load_group_fixture_dates()
+        assert len(dates) == 72
+        assert all(d and d != "TBD" for d in dates.values())
 
 
 # ── KO match id assignment ────────────────────────────────────────────────────
