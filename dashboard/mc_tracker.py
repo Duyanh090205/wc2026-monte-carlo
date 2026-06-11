@@ -107,12 +107,13 @@ dates = sorted(df["date"].unique())
 st.title("MC simulator vs market — WC2026 daily tracker")
 st.caption("Model: ELO + squad-MV + star (static, locked pre-tournament) — re-conditioned daily "
            "on played results only. Goal: track the market with a stable, understood bias; "
-           "an unusual divergence from that bias is the signal.")
+           "an unusual divergence from that bias is the signal. "
+           "New snapshot daily at 08:30 UTC (04:30 ET), after the previous matchday settles.")
 
 day = st.sidebar.selectbox("Snapshot day", [pd.Timestamp(d).date() for d in reversed(dates)])
 top_n = st.sidebar.slider("Teams shown in charts", 10, 48, 20)
 market_src = st.sidebar.radio(
-    "Market reference", ["Consensus", "Polymarket", "Kalshi"],
+    "Market reference", ["Polymarket", "Consensus", "Kalshi"],
     help="Consensus = normalized median of platform mids, exactly as logged by the daily run. "
          "Picking one platform recomputes every edge, JSD and L1 against that platform's mid "
          "prices, renormalized over only the teams it quotes.")
@@ -169,9 +170,9 @@ with tab_today:
         text=[f"{v:+.2f}" for v in sub["abs_pp"]], textposition="outside",
         cliponaxis=False))
     fig.update_layout(template=TPL, height=26 * len(sub) + 120,
-                      title="Absolute edge — model − market (pp)<br>"
+                      title=f"Absolute edge — model − {market_src} (pp)<br>"
                             "<sup>green: model above market · red: model below</sup>",
-                      xaxis_title="model − market (pp)", margin=dict(l=10, r=40))
+                      xaxis_title=f"model − {market_src} (pp)", margin=dict(l=10, r=40))
     fig.add_vline(x=0, line_color="black", line_width=1)
     c_abs.plotly_chart(fig, width="stretch")
 
@@ -190,9 +191,9 @@ with tab_today:
         text=[f"{v:+.0f}%" for v in rel["rel_pct"]], textposition="outside",
         cliponaxis=False))
     fig.update_layout(template=TPL, height=26 * len(rel) + 120,
-                      title="Relative edge — (market − model) / model (%)<br>"
+                      title=f"Relative edge — ({market_src} − model) / model (%)<br>"
                             "<sup>red: market prices the team RICHER than model (longshot premium)</sup>",
-                      xaxis_title="(market − model) / model (%)", margin=dict(l=10, r=50))
+                      xaxis_title=f"({market_src} − model) / model (%)", margin=dict(l=10, r=50))
     fig.add_vline(x=0, line_color="black", line_width=1)
     c_rel.plotly_chart(fig, width="stretch")
 
@@ -225,7 +226,7 @@ with tab_scatter:
         marker=dict(size=9, color=s["abs_pp"], colorscale="RdYlGn", cmid=0,
                     colorbar=dict(title="edge pp")),
         customdata=s["team"], name="teams",
-        hovertemplate="%{customdata}<br>market %{x:.2f}% · model %{y:.2f}%<extra></extra>")
+        hovertemplate="%{customdata}<br>" + market_src + " %{x:.2f}% · model %{y:.2f}%<extra></extra>")
     ax = dict(type="log" if log_axes else "linear", range=None)
     if log_axes:
         ax["range"] = [np.log10(lim_lo), np.log10(lim_hi)]
@@ -299,7 +300,8 @@ with tab_stab:
 with tab_data:
     st.caption("Raw snapshot for the selected day. pm/kalshi = platform mid prices; "
                "consensus = their normalized median; blank cells = platform doesn't quote "
-               "that team. Download gives the full multi-day log.")
+               "that team. abs_pp / rel_pct follow the Market reference picked in the "
+               "sidebar. Download gives the full multi-day log.")
     show = snap[["team", "model_pct", "pm_pct", "kalshi_pct", "consensus_pct", "abs_pp", "rel_pct"]]
     st.dataframe(
         show.style.background_gradient(subset=["abs_pp"], cmap="RdYlGn", vmin=-3, vmax=3)
