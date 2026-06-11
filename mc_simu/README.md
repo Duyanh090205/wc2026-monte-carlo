@@ -118,6 +118,9 @@ team name, unplaceable KO pair) degrades to a warning and leaves the CSV alone.
 $env:FOOTBALL_DATA_TOKEN = "<token>"; python -m mc_simu.fetch_played --dry-run
 ```
 
+Public read-only data API (Supabase REST over the daily log, for anyone who
+wants to build on the data): see [`API.md`](API.md).
+
 ---
 
 ## Rebuild from scratch (optional)
