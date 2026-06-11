@@ -38,7 +38,8 @@ from mc_simu.run_phase3_baselines import load_ratings_for_source  # noqa: E402
 from mc_simu.single_game import ModelParams  # noqa: E402
 from mc_simu.star_presence import apply_star_bonus, load_star_counts  # noqa: E402
 from mc_simu.tournaments.wc2026 import (  # noqa: E402
-    load_played_results, load_wc2026_bundle, run_monte_carlo,
+    LATER_ROUNDS, build_sim_context, load_played_results, load_wc2026_bundle,
+    run_monte_carlo,
 )
 from mc_simu.tune_to_market import jsd, normalize  # noqa: E402
 from mc_simu.wc2026_vs_multi import load_prices_endpoint  # noqa: E402
@@ -90,6 +91,64 @@ def model_champion_probs(played, n: int, seed: int) -> dict[str, float]:
     bundle = load_wc2026_bundle(production_ratings(), params=ModelParams(diagonal_inflation=0.20))
     res = run_monte_carlo(bundle, n_iterations=n, seed=seed, progress=False, played=played)
     return normalize({t: s["mc_fair_prob"] for t, s in res["champion"].items()})
+
+
+KO_STAGE = {**{m: "r32" for m in range(73, 89)}, **{m: "r16" for m in range(89, 97)},
+            **{m: "qf" for m in range(97, 101)}, 101: "sf", 102: "sf", 104: "final"}
+PRED_COLS = ["stage", "group", "match_id", "home_team", "away_team",
+             "p_home", "p_draw", "p_away", "home_goals", "away_goals", "winner"]
+
+
+def export_match_predictions(played, out_csv: Path) -> int:
+    """Per-match model view + results for the dashboard bracket tab.
+
+    Group W/D/L probs are static (locked model, known fixtures). KO rows appear
+    as the bracket resolves from played results; p_home = advance probability.
+    """
+    sg.ELO_GOALS_DENOMINATOR = 1400.0
+    bundle = load_wc2026_bundle(production_ratings(), params=ModelParams(diagonal_inflation=0.20))
+    sim = build_sim_context(bundle)
+
+    rows = []
+    for g in sorted(sim.group_team_pairs):
+        cdfs = sim.group_cdfs_per_group[g]
+        for i, (h, a) in enumerate(sim.group_team_pairs[g]):
+            grid = np.diff(np.concatenate([[0.0], cdfs[i]])).reshape(9, 9)
+            real = played.group_scores.get(frozenset((h, a)))
+            rows.append({
+                "stage": "group", "group": g, "match_id": "",
+                "home_team": h, "away_team": a,
+                "p_home": round(float(np.tril(grid, -1).sum()), 4),
+                "p_draw": round(float(np.trace(grid)), 4),
+                "p_away": round(float(np.triu(grid, 1).sum()), 4),
+                "home_goals": real[h] if real else "",
+                "away_goals": real[a] if real else "",
+                "winner": "",
+            })
+
+    from mc_simu.fetch_played import resolve_r32_pairings
+    known = resolve_r32_pairings(played.group_scores, bundle.group_membership,
+                                 bundle.r32_table, bundle.ratings) or {}
+    for mid, left, right in LATER_ROUNDS:
+        if left in played.ko_winners and right in played.ko_winners:
+            known[mid] = frozenset((played.ko_winners[left], played.ko_winners[right]))
+    for mid in sorted(known):
+        a, b = sorted(known[mid])
+        rows.append({
+            "stage": KO_STAGE[mid], "group": "", "match_id": mid,
+            "home_team": a, "away_team": b,
+            "p_home": round(sim.ko_advance[(a, b)], 4), "p_draw": "",
+            "p_away": round(1 - sim.ko_advance[(a, b)], 4),
+            "home_goals": "", "away_goals": "",
+            "winner": played.ko_winners.get(mid, ""),
+        })
+
+    out_csv.parent.mkdir(parents=True, exist_ok=True)
+    with out_csv.open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=PRED_COLS)
+        w.writeheader()
+        w.writerows(rows)
+    return len(rows)
 
 
 def live_market(api: str) -> dict[str, dict[str, float]]:
@@ -153,6 +212,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Upserted {len(rows)} rows to Supabase daily_log")
     except Exception as e:
         print(f"Supabase push FAILED (CSV log intact): {e}")
+
+    try:
+        n_pred = export_match_predictions(played, DATA / "wc2026_match_predictions.csv")
+        print(f"Wrote {n_pred} match predictions to wc2026_match_predictions.csv")
+    except Exception as e:
+        print(f"Match predictions export FAILED (daily log intact): {e}")
 
     # daily summary
     j = jsd(mdl, mkt_cons, common)

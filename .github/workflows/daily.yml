@@ -38,6 +38,16 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: PYTHONPATH=src python -m mc_simu.run_daily --n 1000000 | tee -a run.log
+      - name: Push match predictions
+        run: |
+          if [ -n "$(git status --porcelain data/mc_simu/wc2026_match_predictions.csv)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/mc_simu/wc2026_match_predictions.csv
+            git commit -m "data: refresh wc2026_match_predictions"
+            git pull --rebase origin main
+            git push
+          fi
       - name: Job summary
         if: always()
         run: |

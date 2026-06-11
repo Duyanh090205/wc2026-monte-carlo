@@ -165,8 +165,8 @@ with st.expander("How to read these numbers"):
         "from re-conditioning on played results, never from re-fitting. So a *stable* bias "
         "vs the market is expected and fine — the signal is a *change* in that bias.")
 
-tab_today, tab_scatter, tab_traj, tab_stab, tab_data = st.tabs(
-    ["Today's edge", "Model vs market", "Trajectories", "Bias stability", "Data"])
+tab_today, tab_scatter, tab_traj, tab_bracket, tab_stab, tab_data = st.tabs(
+    ["Today's edge", "Model vs market", "Trajectories", "Bracket", "Bias stability", "Data"])
 
 
 with tab_today:
@@ -276,6 +276,75 @@ with tab_traj:
                       yaxis_title="champion prob (%)",
                       xaxis=dict(range=[x0, x1], tickformat="%b %d", dtick=86_400_000))
     st.plotly_chart(fig, width="stretch")
+
+
+with tab_bracket:
+    pred_csv = os.path.join(os.path.dirname(__file__), "..", "data", "mc_simu",
+                            "wc2026_match_predictions.csv")
+    if not os.path.exists(pred_csv):
+        st.info("Per-match predictions land with the next daily run.")
+    else:
+        st.caption("The static model's view of every match — W/D/L probabilities locked "
+                   "pre-tournament, results fill in daily. ✅/❌ marks whether the model's "
+                   "most likely outcome happened; a ❌ on a 45/30/25 call is probability "
+                   "doing its job, not an error. Knockout boxes show advance probability "
+                   "(90' + extra time + penalties).")
+        mp = pd.read_csv(pred_csv)
+
+        ko = mp[mp["stage"] != "group"]
+        st.subheader("Knockout bracket")
+        if ko.empty:
+            st.info("Pairings resolve when the group stage completes (~June 27) — "
+                    "until then the bracket is a distribution, not a tree.")
+        else:
+            rounds = [("r32", "Round of 32"), ("r16", "Round of 16"),
+                      ("qf", "Quarter-finals"), ("sf", "Semi-finals"), ("final", "Final")]
+            cols = st.columns(len(rounds))
+            for col, (key, label) in zip(cols, rounds):
+                col.markdown(f"**{label}**")
+                sub = ko[ko["stage"] == key].sort_values("match_id")
+                if sub.empty:
+                    col.caption("TBD")
+                for _, m in sub.iterrows():
+                    w = m["winner"] if isinstance(m["winner"], str) and m["winner"] else None
+                    def side(t, p):
+                        s = f"{t} {p * 100:.0f}%"
+                        return f"**{s}** ✓" if t == w else s
+                    col.markdown(f"<small>M{int(m['match_id'])}<br>"
+                                 f"{side(m['home_team'], m['p_home'])}<br>"
+                                 f"{side(m['away_team'], m['p_away'])}</small>",
+                                 unsafe_allow_html=True)
+
+        st.subheader("Group stage")
+        groups = mp[mp["stage"] == "group"]
+        grid = st.columns(3)
+        for i, g in enumerate(sorted(groups["group"].unique())):
+            col = grid[i % 3]
+            col.markdown(f"**Group {g}**")
+            sub = groups[groups["group"] == g]
+            pts, gd = {}, {}
+            for _, m in sub.iterrows():
+                h, a = m["home_team"], m["away_team"]
+                probs = f"{m['p_home'] * 100:.0f}/{m['p_draw'] * 100:.0f}/{m['p_away'] * 100:.0f}"
+                if pd.notna(m["home_goals"]) and str(m["home_goals"]) != "":
+                    hg, ag = int(m["home_goals"]), int(m["away_goals"])
+                    actual = "h" if hg > ag else ("a" if ag > hg else "d")
+                    pick = max([("h", m["p_home"]), ("d", m["p_draw"]), ("a", m["p_away"])],
+                               key=lambda x: x[1])[0]
+                    mark = "✅" if pick == actual else "❌"
+                    col.markdown(f"<small>{h} <b>{hg}–{ag}</b> {a} · {probs} {mark}</small>",
+                                 unsafe_allow_html=True)
+                    pts[h] = pts.get(h, 0) + (3 if hg > ag else (1 if hg == ag else 0))
+                    pts[a] = pts.get(a, 0) + (3 if ag > hg else (1 if hg == ag else 0))
+                    gd[h] = gd.get(h, 0) + hg - ag
+                    gd[a] = gd.get(a, 0) + ag - hg
+                else:
+                    col.markdown(f"<small>{h} – {a} · <i>{probs}</i></small>",
+                                 unsafe_allow_html=True)
+            if pts:
+                table = sorted(pts, key=lambda t: (-pts[t], -gd[t]))
+                col.caption("Standings: " + " · ".join(f"{t} {pts[t]}" for t in table))
+            col.markdown("")
 
 
 with tab_stab:
