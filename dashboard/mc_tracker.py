@@ -149,8 +149,7 @@ with tab_scatter:
     lim_lo = min(s["model_pct"].min(), s["consensus_pct"].min()) * 0.7
     lim_hi = max(s["model_pct"].max(), s["consensus_pct"].max()) * 1.3
     fig = go.Figure()
-    d0, d1 = (np.log10(lim_lo), np.log10(lim_hi)) if log_axes else (lim_lo, lim_hi)
-    fig.add_shape(type="line", x0=d0, y0=d0, x1=d1, y1=d1,
+    fig.add_shape(type="line", x0=lim_lo, y0=lim_lo, x1=lim_hi, y1=lim_hi,
                   line=dict(color="gray", width=1.5, dash="dash"))
     labels = [t if (r["model_pct"] > 2 or r["consensus_pct"] > 2) else ""
               for t, (_, r) in zip(s["team"], s.iterrows())]
