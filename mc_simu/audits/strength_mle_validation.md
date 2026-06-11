@@ -80,6 +80,34 @@ Spain ranks #1 and France ranks 4–5 at every H (strength 1.52–1.62; gap to #
 
 **Design tension flagged for owner decision:** the 50/50 pool puts France at ~10–11% vs PM 16.1% — the *largest* pool-vs-market divergence in the book, larger than Portugal. A discrete no-trade class for disagreement would zero the book's biggest consensus-prior edge, while Test 1 says disagreement does not predict production error and Test 2's pool lift comes precisely from disagreement matches. Continuous sizing (`Kelly(p_pool vs market) × g(agreement)`, g discounting but never zero) is the design consistent with all three tests. See [`decision_layer_design.md`](../decision_layer_design.md).
 
+## Deep audit (2026-06-11, /deep-audit-bug research scope: passes 0–4 + 6)
+
+Empirical proof tests run against the committed code paths — **0 confirmed bugs**; 1 medium methodological finding:
+
+| Check | Result |
+|---|---|
+| Cross-file consistency: 630 eval rows (matches_1998_2026.csv) vs fit data (results.csv) | 0 missing, 0 score mismatches, 0 neutral-flag mismatches |
+| Sentinel future-censor: fake post-as_of match injected | Loader filters it; fit bitwise unchanged — no lookahead |
+| Analytical NLL: hand-computed 2-match toy vs `_nll_and_grad` | Match to 1e-10 (gradient already verified vs numeric at 1e-5 in T2.2) |
+| Dedup rule on full file | Drops exactly 1 exact-quintuple entry-dup; keeps the 1 legitimate same-day different-score double-header |
+| Artifact freeze: `data_sha256` vs current results.csv + real-data refit | Hash matches; refit reproduces artifact strengths/c/h to 1e-9 |
+
+**Finding M1 (medium — interpretation, not a bug):** the LOTO baseline freezes eloratings at tournament start (deployment-faithful: production is static in-tournament per the locked convention). Under `validate_phase1`'s alternative per-match as-of convention (ratings update during the tournament), the baseline improves to **0.19460 — exactly the pool's score** (diff −0.00051 ± 0.00097, within noise). So G4's "pool beats baseline" holds against the static deployment regime, but the pool's lift roughly equals what intra-tournament eloratings updates would buy. Both conventions defensible; comparison uses the one matching how the models actually run in WC2026.
+
+## Literature grounding (verified against sources 2026-06-11)
+
+| Design decision | Anchor | Verified |
+|---|---|---|
+| Independent Poisson, 1 strength/team | Ley et al. 2019 Table (national teams): Bivariate 0.1651, **Independent 0.1653**, att/def variants 0.1656 — parsimony wins | ✓ read from arXiv:1705.09575 PDF p11 |
+| Half Period = 3y | Same table: optimal H = 3 years for both best models; authors explicitly reject finer granularity given match sparsity | ✓ p11 |
+| Importance weights {1, 2.5, 3, 4} incl. continental finals at 3 | Paper p4 verbatim: "1 friendly, 2.5 confederation or world cup qualifier, 3 confederation tournament (e.g. UEFA EURO2016, AFCON 2017) or confederations cup, 4 World Cup" (= old FIFA scheme) | ✓ p4 |
+| Friendlies in fitting at weight 1 | Paper fits on all matches with weights; friendlies excluded only from their *evaluation* set — matches our setup (our sweep: excluding them from fitting degrades Brier 2 SE) | ✓ p10 |
+| Exponential half-period smoother | Paper §2 (Fig. 1, vs FIFA's step decay); precedent Dixon & Coles 1997 | ✓ |
+| Score-equation identity test (T2.5) & deferred fit-Poisson/predict-NB | Poisson quasi-MLE consistency for conditional-mean parameters (Wedderburn 1974; Gourieroux, Monfort & Trognon 1984; textbook: Cameron & Trivedi) | standard result |
+| Longshot filter (decision layer) | Snowberg & Wolfers 2010 (favorite-longshot bias); our own PM tail measurements | cited, form-only |
+
+Deviations from the paper, all deliberate and documented: nations_league bucket (didn't exist in 2019; we assign 2.5 = qualifier parity), window 1995 (sweep-confirmed second-order), diag inflation ON (design adjudication: mirror production for attribution; paper has no draw correction).
+
 ## Known limitations (restated from plan §8 + new)
 
 1. Diversity is partial — same match-results data; only the estimation mechanism differs. G2–G4 quantify exactly this.
