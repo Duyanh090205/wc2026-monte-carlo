@@ -11,8 +11,12 @@ bracket is conditioned on facts.
     PYTHONPATH=src python -m mc_simu.run_daily --played-csv data/mc_simu/wc2026_played.csv --date 2026-06-20
 
 Output (append-only, gitignored): data/mc_simu/daily_log.csv
-    date, team, model_pct, pm_pct, kalshi_pct, consensus_pct, abs_pp, rel_pct
-Pre-tournament (no/empty played-csv) -> unconditioned full sim.
+    date, team, model_pct, pm_pct, kalshi_pct, consensus_pct, abs_pp, rel_pct,
+    mle_pct, pool_pct
+mle_pct = parallel mle_strength source (frozen artifact, same conditioning);
+pool_pct = 50/50 log-opinion pool of the two models. abs_pp/rel_pct keep their
+original production-vs-consensus meaning. Pre-tournament (no/empty played-csv)
+-> unconditioned full sim.
 """
 
 from __future__ import annotations
@@ -47,7 +51,11 @@ from mc_simu.wc2026_vs_multi import load_prices_endpoint  # noqa: E402
 DATA = PROJECT_ROOT / "data" / "mc_simu"
 DEFAULT_API = "https://seal-app-yatxw.ondigitalocean.app/api"
 LOG_COLS = ["date", "team", "model_pct", "pm_pct", "kalshi_pct",
-            "consensus_pct", "abs_pp", "rel_pct"]
+            "consensus_pct", "abs_pp", "rel_pct", "mle_pct", "pool_pct"]
+# Columns present in the original Supabase table — fallback payload if the
+# ALTER TABLE migration (deploy/supabase_schema.sql) hasn't been applied yet.
+LEGACY_LOG_COLS = LOG_COLS[:8]
+STRENGTH_ARTIFACT = DATA / "strength_mle_2026-06-11.json"
 
 
 def push_supabase(rows: list[dict]) -> bool:
@@ -60,14 +68,24 @@ def push_supabase(rows: list[dict]) -> bool:
     if not url or not key:
         return False
     import requests
-    payload = [{c: (None if r[c] == "" else r[c]) for c in LOG_COLS} for r in rows]
-    resp = requests.post(
-        f"{url.rstrip('/')}/rest/v1/daily_log?on_conflict=date,team",
-        headers={"apikey": key, "Authorization": f"Bearer {key}",
-                 "Content-Type": "application/json",
-                 "Prefer": "resolution=merge-duplicates,return=minimal"},
-        json=payload, timeout=30,
-    )
+
+    def _post(cols):
+        payload = [{c: (None if r[c] == "" else r[c]) for c in cols} for r in rows]
+        return requests.post(
+            f"{url.rstrip('/')}/rest/v1/daily_log?on_conflict=date,team",
+            headers={"apikey": key, "Authorization": f"Bearer {key}",
+                     "Content-Type": "application/json",
+                     "Prefer": "resolution=merge-duplicates,return=minimal"},
+            json=payload, timeout=30,
+        )
+
+    resp = _post(LOG_COLS)
+    if resp.status_code == 400 and "column" in resp.text.lower():
+        # ALTER TABLE migration not applied yet — keep the day's legacy columns
+        # flowing rather than losing the row entirely.
+        print("Supabase missing new columns (run deploy/supabase_schema.sql "
+              "migration) — retrying with legacy schema")
+        resp = _post(LEGACY_LOG_COLS)
     resp.raise_for_status()
     return True
 
@@ -90,6 +108,32 @@ def model_champion_probs(played, n: int, seed: int) -> dict[str, float]:
     sg.ELO_GOALS_DENOMINATOR = 1400.0
     bundle = load_wc2026_bundle(production_ratings(), params=ModelParams(diagonal_inflation=0.20))
     res = run_monte_carlo(bundle, n_iterations=n, seed=seed, progress=False, played=played)
+    return normalize({t: s["mc_fair_prob"] for t, s in res["champion"].items()})
+
+
+def mle_champion_probs(played, n: int, seed: int) -> dict[str, float]:
+    """Parallel mle_strength run — same bundle/conditioning, frozen artifact.
+
+    Bundle is built from production ratings so bracket mechanics (R32 seeding)
+    are identical across models; the predictor ignores those ratings entirely.
+    """
+    import hashlib
+
+    from mc_simu.strength_mle import (
+        load_strengths_artifact, make_mle_predictor, resolve_team_name,
+    )
+    art = load_strengths_artifact(STRENGTH_ARTIFACT)
+    missing = [t for t in _teams48() if resolve_team_name(t) not in art["strengths"]]
+    if missing:
+        raise KeyError(f"strength artifact missing WC2026 teams: {missing}")
+    current = hashlib.sha256((DATA / "results.csv").read_bytes()).hexdigest()
+    if art.get("data_sha256") != current:
+        print("WARNING: strength artifact data_sha256 != current results.csv "
+              "(artifact stays frozen; refresh is intentional only pre-kickoff)")
+    sg.ELO_GOALS_DENOMINATOR = 1400.0
+    bundle = load_wc2026_bundle(production_ratings(), params=ModelParams(diagonal_inflation=0.20))
+    res = run_monte_carlo(bundle, n_iterations=n, seed=seed, progress=False,
+                          played=played, predictor=make_mle_predictor(art))
     return normalize({t: s["mc_fair_prob"] for t, s in res["champion"].items()})
 
 
@@ -179,12 +223,15 @@ def main(argv: list[str] | None = None) -> int:
            f"({'pre-tournament' if n_locked == 0 else args.played_csv.name})")
 
     model = model_champion_probs(played, args.n, args.seed)
+    mle = mle_champion_probs(played, args.n, args.seed)
     market = live_market(args.api_url)
     # log every WC2026 team that the market quotes — eliminated teams show model 0%
     # (clean time series: a knocked-out favorite reads 19%->0%, not "vanished").
     common = [t for t in _teams48() if t in market]
     mkt_cons = normalize({t: market[t]["consensus"] for t in common})
     mdl = normalize({t: model.get(t, 0.0) for t in common})
+    mle_n = normalize({t: mle.get(t, 0.0) for t in common})
+    pool = normalize({t: (mdl[t] * mle_n[t]) ** 0.5 for t in common})
 
     rows = []
     for t in sorted(common, key=lambda x: -mdl[x]):
@@ -197,6 +244,8 @@ def main(argv: list[str] | None = None) -> int:
             "consensus_pct": round(c * 100, 3),
             "abs_pp": round((m - c) * 100, 3),
             "rel_pct": round((c - m) / m * 100, 1) if m > 0 else "",
+            "mle_pct": round(mle_n[t] * 100, 3),
+            "pool_pct": round(pool[t] * 100, 3),
         })
 
     args.log_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -222,7 +271,10 @@ def main(argv: list[str] | None = None) -> int:
     # daily summary
     j = jsd(mdl, mkt_cons, common)
     l1 = sum(abs(mdl[t] - mkt_cons[t]) for t in common) * 100
-    banner(f"Snapshot {args.date} — JSD={j:.4f}  L1={l1:.1f}pp vs market consensus")
+    j_mle = jsd(mle_n, mkt_cons, common)
+    j_pair = jsd(mdl, mle_n, common)
+    banner(f"Snapshot {args.date} — JSD prod={j:.4f} mle={j_mle:.4f} "
+           f"prod-vs-mle={j_pair:.4f}  L1(prod)={l1:.1f}pp")
     print(f"{'Team':<16}{'model%':>8}{'mkt%':>8}{'abs pp':>9}{'rel %':>8}")
     by_abs = sorted(rows, key=lambda r: -abs(r["abs_pp"]))
     for r in by_abs[:8]:
@@ -233,7 +285,8 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-__all__ = ["production_ratings", "model_champion_probs", "live_market", "push_supabase", "main"]
+__all__ = ["production_ratings", "model_champion_probs", "mle_champion_probs",
+           "live_market", "push_supabase", "main"]
 
 
 if __name__ == "__main__":

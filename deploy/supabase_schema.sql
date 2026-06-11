@@ -12,6 +12,11 @@ create table if not exists daily_log (
     primary key (date, team)
 );
 
+-- Migration 2026-06-11: parallel mle_strength source + 50/50 pool.
+-- Idempotent — safe to run on an existing table.
+alter table daily_log add column if not exists mle_pct  double precision;
+alter table daily_log add column if not exists pool_pct double precision;
+
 alter table daily_log enable row level security;
 
 -- Dashboard reads with the anon key; writes go through the service key (bypasses RLS).
