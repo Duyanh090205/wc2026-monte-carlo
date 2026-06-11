@@ -8,6 +8,7 @@ Local: streamlit run dashboard/mc_tracker.py
 """
 
 import os
+import sys
 
 import numpy as np
 import pandas as pd
@@ -15,6 +16,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 import requests
 import streamlit as st
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+from mc_simu.tournaments.wc2026 import (  # bracket topology — single source of truth
+    LATER_ROUNDS as KO_ROUNDS, R32_BRACKET as KO_R32,
+)
 
 st.set_page_config(page_title="MC vs Market — WC2026", layout="wide", page_icon="📈")
 
@@ -72,6 +78,103 @@ def spread_labels(xn: np.ndarray, yn: np.ndarray, labeled: list) -> list:
         pos[i] = next((p for p in cycle if p not in taken), "top center")
         placed.append(i)
     return pos
+
+
+KO_STAGE_X = {**{m: 0 for m in range(73, 89)}, **{m: 1 for m in range(89, 97)},
+              **{m: 2 for m in range(97, 101)}, 101: 3, 102: 3, 104: 4}
+
+
+def prob_bar(p_home: float, p_draw: float, p_away: float) -> str:
+    return (f'<div style="display:flex;width:150px;height:7px;border-radius:3px;'
+            f'overflow:hidden;margin:2px 0 7px 0">'
+            f'<div style="width:{p_home * 100:.0f}%;background:{UP_C}"></div>'
+            f'<div style="width:{p_draw * 100:.0f}%;background:#9a9a9a"></div>'
+            f'<div style="width:{p_away * 100:.0f}%;background:{DOWN_C}"></div></div>')
+
+
+def bracket_figure(ko: pd.DataFrame) -> go.Figure:
+    """Fixed FIFA bracket tree; boxes fill in from the predictions CSV as the
+    tournament resolves. Drawn from the same constants the simulator uses."""
+    children = {mid: (left, right) for mid, left, right in KO_ROUNDS}
+
+    def slot(src: tuple) -> str:
+        return {"W": f"1{src[1]}", "RU": f"2{src[1]}"}.get(src[0], "3rd")
+
+    slots = {mid: (slot(left), slot(right)) for mid, left, right in KO_R32}
+    leaves: list = []
+
+    def walk(mid: int) -> None:
+        if mid in children:
+            walk(children[mid][0])
+            walk(children[mid][1])
+        else:
+            leaves.append(mid)
+
+    walk(104)
+    ypos = {mid: float(i) for i, mid in enumerate(leaves)}
+
+    def ynode(mid: int) -> float:
+        if mid not in ypos:
+            left, right = children[mid]
+            ypos[mid] = (ynode(left) + ynode(right)) / 2
+        return ypos[mid]
+
+    ynode(104)
+    by_mid = ({int(r["match_id"]): r for _, r in ko.iterrows()} if len(ko) else {})
+
+    def short(t: str) -> str:
+        return t if len(t) <= 14 else t[:13] + "…"
+
+    fig = go.Figure()
+    hover_x, hover_y, hover_t = [], [], []
+    for mid, yv in ypos.items():
+        x = KO_STAGE_X[mid]
+        row = by_mid.get(mid)
+        if row is not None:
+            a, b, w = row["home_team"], row["away_team"], row["winner"]
+            w = w if isinstance(w, str) and w else None
+            la = f"{short(a)} {row['p_home'] * 100:.0f}%"
+            lb = f"{short(b)} {row['p_away'] * 100:.0f}%"
+            if w == a:
+                la = f"<b><span style='color:{UP_C}'>{la} ✓</span></b>"
+            elif w == b:
+                lb = f"<b><span style='color:{UP_C}'>{lb} ✓</span></b>"
+            text, border = la + "<br>" + lb, "rgba(127,127,127,0.55)"
+            hover_t.append(f"M{mid}: {a} {row['p_home'] * 100:.0f}% — "
+                           f"{b} {row['p_away'] * 100:.0f}%"
+                           + (f" · advanced: {w}" if w else ""))
+        else:
+            if mid in slots:
+                pa, pb = slots[mid]
+            else:
+                pa, pb = f"W{children[mid][0]}", f"W{children[mid][1]}"
+            text, border = f"<i>{pa}</i><br><i>{pb}</i>", "rgba(127,127,127,0.25)"
+            hover_t.append(f"M{mid}: waiting for {pa} vs {pb}")
+        fig.add_annotation(x=x, y=yv, text=text, showarrow=False, align="left",
+                           font=dict(size=10), bordercolor=border, borderwidth=1,
+                           borderpad=4, bgcolor="rgba(127,127,127,0.08)")
+        hover_x.append(x)
+        hover_y.append(yv)
+        if mid in children:
+            for c in children[mid]:
+                fig.add_shape(type="line", x0=KO_STAGE_X[c] + 0.34, y0=ypos[c],
+                              x1=x - 0.34, y1=yv,
+                              line=dict(color="rgba(127,127,127,0.35)", width=1))
+    fig.add_scatter(x=hover_x, y=hover_y, mode="markers",
+                    marker=dict(size=26, opacity=0), hovertext=hover_t,
+                    hoverinfo="text", showlegend=False)
+    final_row = by_mid.get(104)
+    if final_row is not None and isinstance(final_row["winner"], str) and final_row["winner"]:
+        fig.add_annotation(x=4, y=ynode(104) - 1.4, showarrow=False, font=dict(size=13),
+                           text=f"🏆 <b>{final_row['winner']}</b>")
+    fig.update_layout(template=TPL, height=740, margin=dict(l=10, r=10, t=40, b=10),
+                      xaxis=dict(tickvals=[0, 1, 2, 3, 4],
+                                 ticktext=["Round of 32", "Round of 16", "Quarter-finals",
+                                           "Semi-finals", "Final"],
+                                 range=[-0.55, 4.8], showgrid=False, zeroline=False,
+                                 side="top"),
+                      yaxis=dict(visible=False, autorange="reversed"))
+    return fig
 
 
 def apply_market_source(df: pd.DataFrame, col: str) -> pd.DataFrame:
@@ -284,36 +387,28 @@ with tab_bracket:
     if not os.path.exists(pred_csv):
         st.info("Per-match predictions land with the next daily run.")
     else:
-        st.caption("The static model's view of every match — W/D/L probabilities locked "
-                   "pre-tournament, results fill in daily. ✅/❌ marks whether the model's "
-                   "most likely outcome happened; a ❌ on a 45/30/25 call is probability "
-                   "doing its job, not an error. Knockout boxes show advance probability "
-                   "(90' + extra time + penalties).")
         mp = pd.read_csv(pred_csv)
+        with st.expander("How to read this tab"):
+            st.markdown(
+                "- **Knockout tree** — the bracket structure is FIFA's fixed draw; it fills "
+                "itself in automatically each morning as results land. Until a slot is "
+                "decided it shows a code: `1E` = group E winner, `2A` = group A runner-up, "
+                "`3rd` = a best-third-place slot, `W73` = winner of match 73.\n"
+                "- **Advance %** — the model's chance to win the tie by any route (regular "
+                "time, extra time, penalties), from the same locked model behind the "
+                "outright numbers. Green bold ✓ = actually advanced.\n"
+                "- **W/D/L bars** — width = probability (green: first team wins, grey: "
+                "draw, red: second team wins). These are locked pre-tournament and never "
+                "change; only results fill in.\n"
+                "- **✅/❌** — whether the model's most likely outcome happened. The model "
+                "speaks in probabilities, not picks: over many matches, about a quarter of "
+                "its 75% favourites *should* lose. The interesting signal is systematic "
+                "misses, not single ones.")
 
-        ko = mp[mp["stage"] != "group"]
         st.subheader("Knockout bracket")
-        if ko.empty:
-            st.info("Pairings resolve when the group stage completes (~June 27) — "
-                    "until then the bracket is a distribution, not a tree.")
-        else:
-            rounds = [("r32", "Round of 32"), ("r16", "Round of 16"),
-                      ("qf", "Quarter-finals"), ("sf", "Semi-finals"), ("final", "Final")]
-            cols = st.columns(len(rounds))
-            for col, (key, label) in zip(cols, rounds):
-                col.markdown(f"**{label}**")
-                sub = ko[ko["stage"] == key].sort_values("match_id")
-                if sub.empty:
-                    col.caption("TBD")
-                for _, m in sub.iterrows():
-                    w = m["winner"] if isinstance(m["winner"], str) and m["winner"] else None
-                    def side(t, p):
-                        s = f"{t} {p * 100:.0f}%"
-                        return f"**{s}** ✓" if t == w else s
-                    col.markdown(f"<small>M{int(m['match_id'])}<br>"
-                                 f"{side(m['home_team'], m['p_home'])}<br>"
-                                 f"{side(m['away_team'], m['p_away'])}</small>",
-                                 unsafe_allow_html=True)
+        st.caption("Hover any box for full names and details. The 3rd-place play-off "
+                   "is not simulated (v1 scope).")
+        st.plotly_chart(bracket_figure(mp[mp["stage"] != "group"]), width="stretch")
 
         st.subheader("Group stage")
         groups = mp[mp["stage"] == "group"]
@@ -325,22 +420,21 @@ with tab_bracket:
             pts, gd = {}, {}
             for _, m in sub.iterrows():
                 h, a = m["home_team"], m["away_team"]
-                probs = f"{m['p_home'] * 100:.0f}/{m['p_draw'] * 100:.0f}/{m['p_away'] * 100:.0f}"
+                bar = prob_bar(m["p_home"], m["p_draw"], m["p_away"])
                 if pd.notna(m["home_goals"]) and str(m["home_goals"]) != "":
                     hg, ag = int(m["home_goals"]), int(m["away_goals"])
                     actual = "h" if hg > ag else ("a" if ag > hg else "d")
                     pick = max([("h", m["p_home"]), ("d", m["p_draw"]), ("a", m["p_away"])],
                                key=lambda x: x[1])[0]
                     mark = "✅" if pick == actual else "❌"
-                    col.markdown(f"<small>{h} <b>{hg}–{ag}</b> {a} · {probs} {mark}</small>",
+                    col.markdown(f"<small>{h} <b>{hg}–{ag}</b> {a} {mark}</small>{bar}",
                                  unsafe_allow_html=True)
                     pts[h] = pts.get(h, 0) + (3 if hg > ag else (1 if hg == ag else 0))
                     pts[a] = pts.get(a, 0) + (3 if ag > hg else (1 if hg == ag else 0))
                     gd[h] = gd.get(h, 0) + hg - ag
                     gd[a] = gd.get(a, 0) + ag - hg
                 else:
-                    col.markdown(f"<small>{h} – {a} · <i>{probs}</i></small>",
-                                 unsafe_allow_html=True)
+                    col.markdown(f"<small>{h} – {a}</small>{bar}", unsafe_allow_html=True)
             if pts:
                 table = sorted(pts, key=lambda t: (-pts[t], -gd[t]))
                 col.caption("Standings: " + " · ".join(f"{t} {pts[t]}" for t in table))
