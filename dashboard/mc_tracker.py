@@ -121,6 +121,18 @@ SRC_COL = {"Consensus": "consensus_pct", "Polymarket": "pm_pct", "Kalshi": "kals
 df = apply_market_source(df, SRC_COL[market_src])
 snap = df[df["date"] == pd.Timestamp(day)].sort_values("model_pct", ascending=False)
 st.sidebar.caption(f"{market_src}: {len(snap)} teams quoted on {day}")
+with st.sidebar.expander("Data sources"):
+    st.markdown(
+        "- **Team strength** — Elo ratings, [eloratings.net](https://www.eloratings.net) "
+        "(pre-tournament snapshot, frozen)\n"
+        "- **Squad value** — [Transfermarkt](https://www.transfermarkt.com) squad market "
+        "values, blended into Elo (alpha 0.5)\n"
+        "- **Star bonus** — hand-curated list (Transfermarkt MV thresholds + "
+        "Ballon d'Or top-30), +15 Elo per star\n"
+        "- **Market prices** — Polymarket + Kalshi mid prices via the FairLine API\n"
+        "- **Match results** — [football-data.org](https://www.football-data.org), "
+        "auto-fetched daily\n"
+        "- **Bracket & fixtures** — FIFA final draw, Wikipedia snapshots")
 
 l1 = (snap["model_pct"] - snap["mkt_pct"]).abs().sum()
 j = jsd_pct(snap["model_pct"].to_numpy(), snap["mkt_pct"].to_numpy())
