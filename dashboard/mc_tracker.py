@@ -124,7 +124,13 @@ with tab_today:
     fig.add_vline(x=0, line_color="black", line_width=1)
     c_abs.plotly_chart(fig, width="stretch")
 
+    mc_floor = 0.02
     rel = snap.dropna(subset=["rel_pct"])
+    rel = rel[rel["model_pct"] >= mc_floor]
+    n_noise = len(snap) - len(rel)
+    if n_noise:
+        c_rel.caption(f"{n_noise} longshots hidden (model < {mc_floor}% = under ~10 of 50k MC hits): "
+                      "their relative edge is sampling noise, not signal — read them on the absolute chart")
     rel = rel.reindex(rel["rel_pct"].abs().sort_values(ascending=False).index).head(top_n)
     rel = rel.sort_values("rel_pct")
     fig = go.Figure(go.Bar(
