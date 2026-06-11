@@ -1,4 +1,5 @@
--- Run once in Supabase SQL editor (Project > SQL > New query).
+-- Supabase SQL editor (Project > SQL > New query). Fully idempotent —
+-- safe to paste and run the WHOLE file on both fresh and existing projects.
 create table if not exists daily_log (
     date          date        not null,
     team          text        not null,
@@ -20,4 +21,5 @@ alter table daily_log add column if not exists pool_pct double precision;
 alter table daily_log enable row level security;
 
 -- Dashboard reads with the anon key; writes go through the service key (bypasses RLS).
+drop policy if exists "anon read" on daily_log;
 create policy "anon read" on daily_log for select to anon using (true);
