@@ -59,6 +59,21 @@ def load_log() -> pd.DataFrame:
     return df
 
 
+def spread_labels(xn: np.ndarray, yn: np.ndarray, labeled: list) -> list:
+    """Assign per-point textposition so labels of nearby points don't overlap."""
+    cycle = ["top center", "bottom center", "middle right", "middle left"]
+    pos = ["top center"] * len(xn)
+    placed = []
+    for i in sorted(range(len(xn)), key=lambda k: -(xn[k] + yn[k])):
+        if not labeled[i]:
+            continue
+        taken = {pos[j] for j in placed
+                 if abs(xn[i] - xn[j]) < 0.09 and abs(yn[i] - yn[j]) < 0.07}
+        pos[i] = next((p for p in cycle if p not in taken), "top center")
+        placed.append(i)
+    return pos
+
+
 def jsd_pct(p: np.ndarray, q: np.ndarray, eps: float = 1e-6) -> float:
     """Base-2 JSD, mirrors mc_simu.tune_to_market.jsd so numbers match run logs."""
     p = np.maximum(p, eps)
@@ -136,11 +151,17 @@ with tab_scatter:
     fig = go.Figure()
     fig.add_scatter(x=[lim_lo, lim_hi], y=[lim_lo, lim_hi], mode="lines",
                     line=dict(color="gray", dash="dash"), name="model = market")
+    labels = [t if (r["model_pct"] > 2 or r["consensus_pct"] > 2) else ""
+              for t, (_, r) in zip(s["team"], s.iterrows())]
+    ft = np.log10 if log_axes else np.asarray
+    span = float(ft(lim_hi) - ft(lim_lo))
+    xn = (ft(s["consensus_pct"].to_numpy(dtype=float)) - ft(lim_lo)) / span
+    yn = (ft(s["model_pct"].to_numpy(dtype=float)) - ft(lim_lo)) / span
     fig.add_scatter(
         x=s["consensus_pct"], y=s["model_pct"], mode="markers+text",
-        text=[t if (r["model_pct"] > 2 or r["consensus_pct"] > 2) else ""
-              for t, (_, r) in zip(s["team"], s.iterrows())],
-        textposition="top center", textfont_size=10,
+        text=labels,
+        textposition=spread_labels(xn, yn, [bool(t) for t in labels]),
+        textfont_size=10,
         marker=dict(size=9, color=s["abs_pp"], colorscale="RdYlGn", cmid=0,
                     colorbar=dict(title="edge pp")),
         customdata=s["team"], name="teams",
