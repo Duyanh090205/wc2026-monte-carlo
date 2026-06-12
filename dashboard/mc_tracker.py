@@ -439,7 +439,10 @@ with tab_bracket:
                 "- **✅/❌** — whether the model's most likely outcome happened. The model "
                 "speaks in probabilities, not picks: over many matches, about a quarter of "
                 "its 75% favourites *should* lose. The interesting signal is systematic "
-                "misses, not single ones.")
+                "misses, not single ones.\n"
+                "- **pred 2-0 (11%)** — the single most likely of the 81 scorelines the "
+                "model prices (0-0 through 8-8). Even the best pick rarely exceeds ~13%, "
+                "so most will miss by design; 🎯 marks an exact hit.")
 
         st.subheader("Knockout bracket")
         st.caption("Hover any box for full names and details. The 3rd-place play-off "
@@ -448,6 +451,10 @@ with tab_bracket:
 
         st.subheader("Group stage")
         groups = mp[mp["stage"] == "group"]
+        score_col = ("score_pred_mle"
+                     if model_src == "MLE strength" and "score_pred_mle" in groups.columns
+                     and groups["score_pred_mle"].notna().any()
+                     else "score_pred")
         grid = st.columns(3)
         for i, g in enumerate(sorted(groups["group"].unique())):
             col = grid[i % 3]
@@ -457,20 +464,31 @@ with tab_bracket:
             for _, m in sub.iterrows():
                 h, a = m["home_team"], m["away_team"]
                 bar = prob_bar(m["p_home"], m["p_draw"], m["p_away"])
+                sp = m.get(score_col) if score_col in sub.columns else None
+                sp = sp if isinstance(sp, str) and sp else None
+                sp_txt = ""
+                if sp:
+                    if score_col == "score_pred" and pd.notna(m.get("score_prob")):
+                        sp_txt = f" · pred {sp} ({m['score_prob'] * 100:.0f}%)"
+                    else:
+                        sp_txt = f" · pred {sp}"
                 if pd.notna(m["home_goals"]) and str(m["home_goals"]) != "":
                     hg, ag = int(m["home_goals"]), int(m["away_goals"])
                     actual = "h" if hg > ag else ("a" if ag > hg else "d")
                     pick = max([("h", m["p_home"]), ("d", m["p_draw"]), ("a", m["p_away"])],
                                key=lambda x: x[1])[0]
                     mark = "✅" if pick == actual else "❌"
-                    col.markdown(f"<small>{h} <b>{hg}–{ag}</b> {a} {mark}</small>{bar}",
+                    hit = " 🎯" if sp == f"{hg}-{ag}" else ""
+                    col.markdown(f"<small>{h} <b>{hg}–{ag}</b> {a} {mark}{sp_txt}{hit}"
+                                 f"</small>{bar}",
                                  unsafe_allow_html=True)
                     pts[h] = pts.get(h, 0) + (3 if hg > ag else (1 if hg == ag else 0))
                     pts[a] = pts.get(a, 0) + (3 if ag > hg else (1 if hg == ag else 0))
                     gd[h] = gd.get(h, 0) + hg - ag
                     gd[a] = gd.get(a, 0) + ag - hg
                 else:
-                    col.markdown(f"<small>{h} – {a}</small>{bar}", unsafe_allow_html=True)
+                    col.markdown(f"<small>{h} – {a}<i>{sp_txt}</i></small>{bar}",
+                                 unsafe_allow_html=True)
             if pts:
                 table = sorted(pts, key=lambda t: (-pts[t], -gd[t]))
                 col.caption("Standings: " + " · ".join(f"{t} {pts[t]}" for t in table))

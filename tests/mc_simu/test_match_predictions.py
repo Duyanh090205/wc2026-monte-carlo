@@ -17,6 +17,8 @@ def test_unconditioned_export_has_72_group_rows(tmp_path) -> None:
     probs = df["p_home"] + df["p_draw"] + df["p_away"]
     assert ((probs - 1).abs() < 0.01).all()
     assert len(set(df["home_team"]) | set(df["away_team"])) == 48
+    assert df["score_pred"].str.fullmatch(r"\d-\d").all()
+    assert ((df["score_prob"] > 0) & (df["score_prob"] < 0.5)).all()
 
 
 def test_played_result_merged_into_row(tmp_path) -> None:

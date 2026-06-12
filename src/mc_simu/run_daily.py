@@ -142,6 +142,7 @@ KO_STAGE = {**{m: "r32" for m in range(73, 89)}, **{m: "r16" for m in range(89, 
 PRED_COLS = ["stage", "group", "match_id", "home_team", "away_team",
              "p_home", "p_draw", "p_away",
              "p_home_mle", "p_draw_mle", "p_away_mle",
+             "score_pred", "score_prob", "score_pred_mle",
              "home_goals", "away_goals", "winner"]
 
 
@@ -150,6 +151,12 @@ def _wdl_from_cdf(cdfs, i) -> tuple[float, float, float]:
     return (round(float(np.tril(grid, -1).sum()), 4),
             round(float(np.trace(grid)), 4),
             round(float(np.triu(grid, 1).sum()), 4))
+
+
+def _modal_score(cdfs, i) -> tuple[str, float]:
+    grid = np.diff(np.concatenate([[0.0], cdfs[i]])).reshape(9, 9)
+    h, a = np.unravel_index(int(grid.argmax()), grid.shape)
+    return f"{h}-{a}", round(float(grid[h, a]), 4)
 
 
 def export_match_predictions(played, out_csv: Path) -> int:
@@ -176,16 +183,19 @@ def export_match_predictions(played, out_csv: Path) -> int:
         cdfs = sim.group_cdfs_per_group[g]
         for i, (h, a) in enumerate(sim.group_team_pairs[g]):
             ph, pd_, pa = _wdl_from_cdf(cdfs, i)
+            score, score_p = _modal_score(cdfs, i)
             if sim_mle is not None:
                 ph_m, pd_m, pa_m = _wdl_from_cdf(sim_mle.group_cdfs_per_group[g], i)
+                score_m, _ = _modal_score(sim_mle.group_cdfs_per_group[g], i)
             else:
-                ph_m = pd_m = pa_m = ""
+                ph_m = pd_m = pa_m = score_m = ""
             real = played.group_scores.get(frozenset((h, a)))
             rows.append({
                 "stage": "group", "group": g, "match_id": "",
                 "home_team": h, "away_team": a,
                 "p_home": ph, "p_draw": pd_, "p_away": pa,
                 "p_home_mle": ph_m, "p_draw_mle": pd_m, "p_away_mle": pa_m,
+                "score_pred": score, "score_prob": score_p, "score_pred_mle": score_m,
                 "home_goals": real[h] if real else "",
                 "away_goals": real[a] if real else "",
                 "winner": "",
@@ -209,6 +219,7 @@ def export_match_predictions(played, out_csv: Path) -> int:
             "p_home_mle": round(adv_m, 4) if adv_m is not None else "",
             "p_draw_mle": "",
             "p_away_mle": round(1 - adv_m, 4) if adv_m is not None else "",
+            "score_pred": "", "score_prob": "", "score_pred_mle": "",
             "home_goals": "", "away_goals": "",
             "winner": played.ko_winners.get(mid, ""),
         })
