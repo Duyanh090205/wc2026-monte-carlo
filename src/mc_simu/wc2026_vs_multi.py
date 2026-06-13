@@ -100,6 +100,41 @@ def load_prices_endpoint(api_base: str, event: str = "world_cup_2026"
     return out
 
 
+def load_prices_full(api_base: str, event: str = "world_cup_2026"
+                     ) -> dict[str, dict[str, dict[str, float]]]:
+    """Like load_prices_endpoint but keeps bid/ask: {team: {src: {mid,bid,ask}}}.
+
+    Used by the daily tracker to log the executable spread, not just the mid —
+    edge inside the spread is untradeable, so a future backtest needs both sides.
+    bid/ask are best-effort (None when the platform doesn't quote a side).
+    """
+    import requests
+    url = f"{api_base.rstrip('/')}/events/{event}/prices"
+    resp = requests.get(url, timeout=30)
+    resp.raise_for_status()
+    out: dict[str, dict[str, dict[str, float]]] = {}
+    for row in resp.json():
+        raw = str(row.get("team", ""))
+        team = PRICES_TEAM_ALIASES.get(raw, FAIR_TEAM_ALIASES.get(raw, raw))
+        if team is None or not team:
+            continue
+        plat = str(row.get("platform", ""))
+        src = "Kalshi" if "kalshi" in plat else ("Polymarket" if "polymarket" in plat else None)
+        if src is None:
+            continue
+        mid = row.get("mid")
+        if mid is None or not (0 < float(mid) < 1):
+            continue
+
+        def _side(v):
+            return float(v) if v is not None and 0 < float(v) < 1 else None
+
+        out.setdefault(team, {}).setdefault(
+            src, {"mid": float(mid), "bid": _side(row.get("bid")),
+                  "ask": _side(row.get("ask"))})
+    return out
+
+
 def load_fair_odds_endpoint(api_base: str, event: str = "world_cup_2026",
                             market: str = "winner") -> dict[str, float]:
     """Return {team: fair_prob} from /fair-odds (covers all 48 finalists, FLine only)."""

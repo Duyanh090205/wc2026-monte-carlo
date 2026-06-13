@@ -12,11 +12,12 @@ bracket is conditioned on facts.
 
 Output (append-only, gitignored): data/mc_simu/daily_log.csv
     date, team, model_pct, pm_pct, kalshi_pct, consensus_pct, abs_pp, rel_pct,
-    mle_pct, pool_pct
+    mle_pct, pool_pct, pm_bid, pm_ask, kalshi_bid, kalshi_ask
 mle_pct = parallel mle_strength source (frozen artifact, same conditioning);
 pool_pct = 50/50 log-opinion pool of the two models. abs_pp/rel_pct keep their
-original production-vs-consensus meaning. Pre-tournament (no/empty played-csv)
--> unconditioned full sim.
+original production-vs-consensus meaning. pm/kalshi_bid/ask = executable spread
+per platform (mids still drive consensus) — logged so a later backtest can tell
+tradeable edge from edge inside the spread. Pre-tournament -> unconditioned sim.
 """
 
 from __future__ import annotations
@@ -46,14 +47,17 @@ from mc_simu.tournaments.wc2026 import (  # noqa: E402
     run_monte_carlo,
 )
 from mc_simu.tune_to_market import jsd, normalize  # noqa: E402
-from mc_simu.wc2026_vs_multi import load_prices_endpoint  # noqa: E402
+from mc_simu.wc2026_vs_multi import load_prices_full  # noqa: E402
 
 DATA = PROJECT_ROOT / "data" / "mc_simu"
 DEFAULT_API = "https://seal-app-yatxw.ondigitalocean.app/api"
 LOG_COLS = ["date", "team", "model_pct", "pm_pct", "kalshi_pct",
-            "consensus_pct", "abs_pp", "rel_pct", "mle_pct", "pool_pct"]
-# Columns present in the original Supabase table — fallback payload if the
-# ALTER TABLE migration (deploy/supabase_schema.sql) hasn't been applied yet.
+            "consensus_pct", "abs_pp", "rel_pct", "mle_pct", "pool_pct",
+            "pm_bid", "pm_ask", "kalshi_bid", "kalshi_ask"]
+# Tiered fallback for partially-migrated Supabase tables: try full schema, then
+# the mle/pool era (10 cols), then the original launch schema (8 cols). Keeps
+# the most data flowing whichever ALTER TABLE migrations have been applied.
+COLS_V2 = LOG_COLS[:10]
 LEGACY_LOG_COLS = LOG_COLS[:8]
 STRENGTH_ARTIFACT = DATA / "strength_mle_2026-06-11.json"
 
@@ -79,13 +83,13 @@ def push_supabase(rows: list[dict]) -> bool:
             json=payload, timeout=30,
         )
 
-    resp = _post(LOG_COLS)
-    if resp.status_code == 400 and "column" in resp.text.lower():
-        # ALTER TABLE migration not applied yet — keep the day's legacy columns
-        # flowing rather than losing the row entirely.
-        print("Supabase missing new columns (run deploy/supabase_schema.sql "
-              "migration) — retrying with legacy schema")
-        resp = _post(LEGACY_LOG_COLS)
+    for cols in (LOG_COLS, COLS_V2, LEGACY_LOG_COLS):
+        resp = _post(cols)
+        if not (resp.status_code == 400 and "column" in resp.text.lower()):
+            break
+        if cols is not LEGACY_LOG_COLS:
+            print(f"Supabase missing columns beyond {len(cols)} (run "
+                  "deploy/supabase_schema.sql migration) — retrying narrower schema")
     resp.raise_for_status()
     return True
 
@@ -233,14 +237,26 @@ def export_match_predictions(played, out_csv: Path) -> int:
 
 
 def live_market(api: str) -> dict[str, dict[str, float]]:
-    """{team: {'pm':, 'kalshi':, 'consensus': median}} from FairLine /prices."""
-    prices = load_prices_endpoint(api)
+    """{team: {pm, kalshi, consensus, pm_bid, pm_ask, kalshi_bid, kalshi_ask}}.
+
+    Mids drive consensus (unchanged); bid/ask are logged so a later backtest can
+    tell tradeable edge from edge that sits inside the spread.
+    """
+    prices = load_prices_full(api)
     out = {}
     for t, row in prices.items():
-        pm, kal = row.get("Polymarket"), row.get("Kalshi")
+        pm = row.get("Polymarket", {}).get("mid") if "Polymarket" in row else None
+        kal = row.get("Kalshi", {}).get("mid") if "Kalshi" in row else None
         vals = [v for v in (pm, kal) if v is not None]
-        if vals:
-            out[t] = {"pm": pm, "kalshi": kal, "consensus": float(np.median(vals))}
+        if not vals:
+            continue
+        out[t] = {
+            "pm": pm, "kalshi": kal, "consensus": float(np.median(vals)),
+            "pm_bid": row.get("Polymarket", {}).get("bid"),
+            "pm_ask": row.get("Polymarket", {}).get("ask"),
+            "kalshi_bid": row.get("Kalshi", {}).get("bid"),
+            "kalshi_ask": row.get("Kalshi", {}).get("ask"),
+        }
     return out
 
 
@@ -277,6 +293,10 @@ def snapshot_rows(date: str, common: list[str], mdl: dict, mkt_cons: dict,
             "rel_pct": round((c - m) / m * 100, 1) if m > 0 else "",
             "mle_pct": round(mle_n[t] * 100, 3) if mle_n is not None else "",
             "pool_pct": round(pool[t] * 100, 3) if pool is not None else "",
+            "pm_bid": round(market[t]["pm_bid"] * 100, 3) if market[t].get("pm_bid") else "",
+            "pm_ask": round(market[t]["pm_ask"] * 100, 3) if market[t].get("pm_ask") else "",
+            "kalshi_bid": round(market[t]["kalshi_bid"] * 100, 3) if market[t].get("kalshi_bid") else "",
+            "kalshi_ask": round(market[t]["kalshi_ask"] * 100, 3) if market[t].get("kalshi_ask") else "",
         })
     return rows
 

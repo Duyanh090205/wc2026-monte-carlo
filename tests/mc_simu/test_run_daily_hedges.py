@@ -54,8 +54,12 @@ class TestSnapshotRows:
     COMMON = ["Spain", "Panama"]
     MDL = {"Spain": 0.95, "Panama": 0.05}
     MKT = {"Spain": 0.90, "Panama": 0.10}
-    MARKET = {"Spain": {"pm": 0.91, "kalshi": 0.89, "consensus": 0.90},
-              "Panama": {"pm": 0.10, "kalshi": None, "consensus": 0.10}}
+    MARKET = {"Spain": {"pm": 0.91, "kalshi": 0.89, "consensus": 0.90,
+                        "pm_bid": 0.90, "pm_ask": 0.92,
+                        "kalshi_bid": 0.88, "kalshi_ask": 0.90},
+              "Panama": {"pm": 0.10, "kalshi": None, "consensus": 0.10,
+                         "pm_bid": 0.09, "pm_ask": 0.11,
+                         "kalshi_bid": None, "kalshi_ask": None}}
 
     def test_mle_failure_leaves_columns_blank(self) -> None:
         rows = rd.snapshot_rows("2026-06-12", self.COMMON, self.MDL, self.MKT,
@@ -73,6 +77,14 @@ class TestSnapshotRows:
         assert rows[0]["mle_pct"] == 90.0
         assert rows[0]["pool_pct"] == 92.0
         assert rows[1]["kalshi_pct"] == ""
+
+    def test_bid_ask_logged_and_blank_when_absent(self) -> None:
+        rows = rd.snapshot_rows("2026-06-12", self.COMMON, self.MDL, self.MKT,
+                                self.MARKET, mle_n=None, pool=None)
+        assert rows[0]["pm_bid"] == 90.0 and rows[0]["pm_ask"] == 92.0
+        assert rows[0]["kalshi_bid"] == 88.0 and rows[0]["kalshi_ask"] == 90.0
+        assert rows[1]["kalshi_bid"] == "" and rows[1]["kalshi_ask"] == ""
+        assert rows[1]["pm_ask"] == 11.0
 
 
 class TestExportSurvivesMleFailure:

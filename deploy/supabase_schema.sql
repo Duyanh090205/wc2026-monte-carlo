@@ -18,6 +18,12 @@ create table if not exists daily_log (
 alter table daily_log add column if not exists mle_pct  double precision;
 alter table daily_log add column if not exists pool_pct double precision;
 
+-- Migration 2026-06-13: executable spread per platform (bid/ask), for backtest.
+alter table daily_log add column if not exists pm_bid     double precision;
+alter table daily_log add column if not exists pm_ask     double precision;
+alter table daily_log add column if not exists kalshi_bid double precision;
+alter table daily_log add column if not exists kalshi_ask double precision;
+
 alter table daily_log enable row level security;
 
 -- Dashboard reads with the anon key; writes go through the service key (bypasses RLS).

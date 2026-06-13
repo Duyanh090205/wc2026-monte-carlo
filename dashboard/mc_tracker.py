@@ -61,7 +61,7 @@ def load_log() -> pd.DataFrame:
         st.stop()
     df["date"] = pd.to_datetime(df["date"])
     for c in ("model_pct", "pm_pct", "kalshi_pct", "consensus_pct", "abs_pp", "rel_pct",
-              "mle_pct", "pool_pct"):
+              "mle_pct", "pool_pct", "pm_bid", "pm_ask", "kalshi_bid", "kalshi_ask"):
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
     return df
@@ -585,7 +585,8 @@ with tab_data:
     st.caption("Raw snapshot for the selected day. pm/kalshi = platform mid prices; "
                "consensus = their normalized median; blank cells = platform doesn't quote "
                "that team. abs_pp / rel_pct follow the Market reference picked in the "
-               "sidebar. Download gives the full multi-day log.")
+               "sidebar. The CSV download also carries per-platform bid/ask "
+               "(executable spread) for backtesting.")
     show = snap[["team", "model_pct", "pm_pct", "kalshi_pct", "consensus_pct", "abs_pp", "rel_pct"]]
     st.dataframe(
         show.style.background_gradient(subset=["abs_pp"], cmap="RdYlGn", vmin=-3, vmax=3)
