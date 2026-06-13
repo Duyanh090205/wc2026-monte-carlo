@@ -289,8 +289,9 @@ with st.expander("How to read these numbers"):
         "from re-conditioning on played results, never from re-fitting. So a *stable* bias "
         "vs the market is expected and fine — the signal is a *change* in that bias.")
 
-tab_today, tab_scatter, tab_traj, tab_bracket, tab_stab, tab_data = st.tabs(
-    ["Today's edge", "Model vs market", "Trajectories", "Bracket", "Bias stability", "Data"])
+tab_today, tab_scatter, tab_traj, tab_bracket, tab_score, tab_stab, tab_data = st.tabs(
+    ["Today's edge", "Model vs market", "Trajectories", "Bracket", "Scorecard",
+     "Bias stability", "Data"])
 
 
 with tab_today:
@@ -495,7 +496,61 @@ with tab_bracket:
             col.markdown("")
 
 
-with tab_stab:
+with tab_score:
+    st.caption("How the model's per-match calls have actually done, scored on played "
+               "group matches only. The model targets the market distribution, not "
+               "match tips — read this as a sanity check, not the headline metric.")
+    pred_csv = os.path.join(os.path.dirname(__file__), "..", "data", "mc_simu",
+                            "wc2026_match_predictions.csv")
+    if not os.path.exists(pred_csv):
+        st.info("Scorecard fills in once matches are played.")
+    else:
+        mp = pd.read_csv(pred_csv)
+        pcols = (["p_home_mle", "p_draw_mle", "p_away_mle"]
+                 if model_src == "MLE strength" and "p_home_mle" in mp.columns
+                 and mp["p_home_mle"].notna().any()
+                 else ["p_home", "p_draw", "p_away"])
+        played_g = mp[(mp["stage"] == "group") & mp["home_goals"].notna()
+                      & (mp["home_goals"].astype(str) != "")].copy()
+        if played_g.empty:
+            st.info("No group matches scored yet — come back after the first matchday.")
+        else:
+            played_g["hg"] = played_g["home_goals"].astype(int)
+            played_g["ag"] = played_g["away_goals"].astype(int)
+            played_g["actual"] = np.select(
+                [played_g["hg"] > played_g["ag"], played_g["hg"] < played_g["ag"]],
+                ["h", "a"], default="d")
+            P = played_g[pcols].to_numpy(dtype=float)
+            pick_idx = P.argmax(axis=1)
+            pick = np.array(["h", "d", "a"])[pick_idx]
+            onehot = np.array([{"h": [1, 0, 0], "d": [0, 1, 0], "a": [0, 0, 1]}[x]
+                               for x in played_g["actual"]])
+            brier = float(((P - onehot) ** 2).sum(axis=1).mean())
+            uniform = np.full_like(P, 1 / 3)
+            brier_base = float(((uniform - onehot) ** 2).sum(axis=1).mean())
+            n = len(played_g)
+            hit = float((pick == played_g["actual"].to_numpy()).mean())
+            exact = int((played_g["score_pred"].astype(str)
+                         == played_g["hg"].astype(str) + "-" + played_g["ag"].astype(str)).sum()
+                        ) if "score_pred" in played_g.columns else 0
+
+            a, b, c, d_ = st.columns(4)
+            a.metric("Matches scored", n)
+            b.metric("Outcome hit rate", f"{hit * 100:.0f}%",
+                     help="Share where the model's most likely W/D/L outcome matched the "
+                          "result. A coin-three-ways baseline sits near 33-40%.")
+            c.metric("Brier vs ignorance", f"{brier:.3f}",
+                     delta=f"{brier - brier_base:+.3f} vs 1/3-each",
+                     delta_color="inverse",
+                     help="Multiclass Brier (0 best, 2 worst) of the model's W/D/L "
+                          "probabilities. Lower than the uniform 1/3 baseline = the model "
+                          "adds information. Green delta = beating ignorance.")
+            d_.metric("Exact scoreline 🎯", f"{exact}/{n}",
+                      help="Times the single most likely scoreline was exactly right. "
+                           "Low by nature — best-pick scorelines rarely clear ~13%.")
+            st.caption(f"Scored on {model_src}. Brier baseline = uniform 1/3-1/3-1/3 "
+                       f"({brier_base:.3f}); n={n} is small early on, so read trends, "
+                       "not single-day swings.")
     st.caption("Is the model's bias vs the market stable? Left: total distance per day "
                "(JSD + L1) — flat is good. Right: per-team edge heatmap — a row keeping its "
                "colour is an understood bias; a row flipping colour is the anomaly to investigate.")

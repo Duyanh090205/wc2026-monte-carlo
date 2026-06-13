@@ -10,7 +10,7 @@ that stays in the original repo.
 
 - Design rationale (predict_match motivation) → [`mc_simu/MODEL_SPEC.md`](mc_simu/MODEL_SPEC.md)
 - How-to-run → [`mc_simu/README.md`](mc_simu/README.md)
-- Public data API (Supabase REST, read-only) → [`mc_simu/API.md`](mc_simu/API.md)
+- Public data API (Supabase REST, read-only) → [`mc_simu/API_MC_SIMU.md`](mc_simu/API_MC_SIMU.md)
 - Implementation plan + phase log → [`mc_simu/mc_simu.md`](mc_simu/mc_simu.md)
 - Validation findings → [`mc_simu/audits/`](mc_simu/audits/)
 

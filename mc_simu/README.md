@@ -126,7 +126,7 @@ $env:FOOTBALL_DATA_TOKEN = "<token>"; python -m mc_simu.fetch_played --dry-run
 ```
 
 Public read-only data API (Supabase REST over the daily log, for anyone who
-wants to build on the data): see [`API.md`](API.md).
+wants to build on the data): see [`API_MC_SIMU.md`](API_MC_SIMU.md).
 
 ---
 
