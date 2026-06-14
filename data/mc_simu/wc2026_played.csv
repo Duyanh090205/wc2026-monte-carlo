@@ -1,4 +1,7 @@
 stage,match_id,home_team,away_team,home_goals,away_goals,winner
+group,,Australia,Turkey,2,0,
+group,,Brazil,Morocco,1,1,
+group,,Haiti,Scotland,0,1,
 group,,Mexico,South Africa,2,0,
 group,,South Korea,Czechia,2,1,
 group,,United States,Paraguay,4,1,
