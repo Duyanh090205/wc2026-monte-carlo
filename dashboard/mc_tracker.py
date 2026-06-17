@@ -441,9 +441,12 @@ with tab_bracket:
                 "- **Model lean** — on each group match, the most likely of win / draw / win, "
                 "with its probability; the bar shows the full split (🟩 left team · ⬜ draw · "
                 "🟥 right team). Locked pre-tournament, never changes.\n"
-                "- **right / upset** — after a match, whether the side the model leaned on "
-                "actually won. The model talks in probabilities, not tips: about a quarter "
-                "of its 75% leans *should* lose. A run of upsets is the signal, not one.\n"
+                "- **verdict** — after a match: *✓ right* (the leaned result happened), "
+                "*✗ held to a draw* (model leaned a winner but it ended level), or *✗ upset* "
+                "(the other side won). The model talks in probabilities, not tips: about a "
+                "quarter of its 75% leans *should* miss. A run of misses is the signal, not one. "
+                "Note the lean (most likely *result*) and the likely *score* can disagree — a "
+                "team can be favoured to win yet 1-1 still be the most common single score.\n"
                 "- **likely 2-0 / nailed 2-0 🎯** — the single most likely of the 81 scorelines "
                 "the model prices. Even the top pick rarely beats ~13%, so most miss by "
                 "design; 🎯 marks an exact hit.")
@@ -457,8 +460,9 @@ with tab_bracket:
         st.subheader("Group stage")
         st.caption("Each match shows the model's lean — the most likely of win / draw / win "
                    "(the bar: 🟩 left team · ⬜ draw · 🟥 right team) and its single most likely "
-                   "score. Once played: **bold score**, then whether the model's lean was "
-                   "**right** or an **upset**, and 🎯 if it nailed the exact score.")
+                   "score. Once played: **bold score**, then the verdict — ✓ right, "
+                   "✗ held to a draw (favourite only drew), or ✗ upset (the other side won) "
+                   "— and 🎯 if it nailed the exact score.")
         groups = mp[mp["stage"] == "group"]
         score_col = ("score_pred_mle"
                      if model_src == "MLE strength" and "score_pred_mle" in groups.columns
@@ -482,8 +486,15 @@ with tab_bracket:
                 if pd.notna(m["home_goals"]) and str(m["home_goals"]) != "":
                     hg, ag = int(m["home_goals"]), int(m["away_goals"])
                     actual = h if hg > ag else (a if ag > hg else "Draw")
-                    verdict = ("<span style='color:#2a8a2a'>✓ right</span>" if lean == actual
-                               else "<span style='color:#cc3b2f'>✗ upset</span>")
+                    if lean == actual:
+                        word, colour = "✓ right", "#2a8a2a"
+                    elif actual == "Draw":
+                        word, colour = "✗ held to a draw", "#c98a00"   # leaned a winner, drew
+                    elif lean == "Draw":
+                        word, colour = "✗ a winner emerged", "#c98a00"  # leaned draw, decided
+                    else:
+                        word, colour = "✗ upset", "#cc3b2f"            # the other side won
+                    verdict = f"<span style='color:{colour}'>{word}</span>"
                     hit = " 🎯" if sp == f"{hg}-{ag}" else ""
                     col.markdown(f"<small>{h} <b>{hg}–{ag}</b> {a} — model {lean_txt} "
                                  f"{verdict}{(' · nailed ' + sp + hit) if hit else ''}</small>{bar}",
