@@ -8,6 +8,7 @@ group results constructed so rankings are decisive (no tiebreaker reliance).
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
 from mc_simu.fetch_played import (
@@ -15,7 +16,7 @@ from mc_simu.fetch_played import (
     find_ko_match_id,
     group_fixture_issue,
     ko_winner,
-    load_group_fixture_dates,
+    load_tournament_window,
     merge_rows,
     plausible_score,
     resolve_r32_pairings,
@@ -131,7 +132,7 @@ class TestResolveR32:
 
 class TestSourceGuards:
     GROUP_OF = {"Mexico": "A", "South Africa": "A", "Canada": "B"}
-    DATES = {frozenset(("Mexico", "South Africa")): "2026-06-11"}
+    WINDOW = (date(2026, 6, 10), date(2026, 7, 20))
 
     def test_plausible_scores(self) -> None:
         assert plausible_score(2, 1)
@@ -139,32 +140,33 @@ class TestSourceGuards:
         assert not plausible_score(16, 0)
         assert not plausible_score(-1, 2)
 
-    def test_same_group_on_schedule_is_valid(self) -> None:
+    def test_same_group_in_window_is_valid(self) -> None:
         assert group_fixture_issue("Mexico", "South Africa", "2026-06-11T20:00:00Z",
-                                   self.GROUP_OF, self.DATES) is None
+                                   self.GROUP_OF, self.WINDOW) is None
+
+    def test_any_matchday_in_window_ok(self) -> None:
+        # regression: a real result dated far from our coarse bucketed fixture
+        # date must still be accepted (the bug that dropped Canada-Bosnia).
+        assert group_fixture_issue("Mexico", "South Africa", "2026-06-25T20:00:00Z",
+                                   self.GROUP_OF, self.WINDOW) is None
 
     def test_cross_group_pairing_rejected(self) -> None:
         issue = group_fixture_issue("Mexico", "Canada", "2026-06-11T20:00:00Z",
-                                    self.GROUP_OF, self.DATES)
+                                    self.GROUP_OF, self.WINDOW)
         assert issue is not None and "not a scheduled group fixture" in issue
 
     def test_unknown_team_rejected(self) -> None:
         assert group_fixture_issue("Atlantis", "Mexico", "2026-06-11T20:00:00Z",
-                                   self.GROUP_OF, self.DATES) is not None
+                                   self.GROUP_OF, self.WINDOW) is not None
 
-    def test_date_weeks_off_rejected(self) -> None:
-        issue = group_fixture_issue("Mexico", "South Africa", "2026-07-30T20:00:00Z",
-                                    self.GROUP_OF, self.DATES)
-        assert issue is not None and "scheduled" in issue
+    def test_date_outside_tournament_rejected(self) -> None:
+        issue = group_fixture_issue("Mexico", "South Africa", "2025-09-01T20:00:00Z",
+                                    self.GROUP_OF, self.WINDOW)
+        assert issue is not None and "outside tournament window" in issue
 
-    def test_one_day_slack_tolerated(self) -> None:
-        assert group_fixture_issue("Mexico", "South Africa", "2026-06-12T01:00:00Z",
-                                   self.GROUP_OF, self.DATES) is None
-
-    def test_real_fixture_table_covers_all_72(self) -> None:
-        dates = load_group_fixture_dates()
-        assert len(dates) == 72
-        assert all(d and d != "TBD" for d in dates.values())
+    def test_real_window_spans_tournament(self) -> None:
+        start, end = load_tournament_window()
+        assert start <= date(2026, 6, 11) and end >= date(2026, 7, 19)
 
 
 # ── KO match id assignment ────────────────────────────────────────────────────

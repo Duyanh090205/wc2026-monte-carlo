@@ -77,13 +77,21 @@ def load_group_membership() -> dict[str, list[str]]:
         return {g: list(t) for g, t in json.load(f)["groups"].items()}
 
 
-def load_group_fixture_dates() -> dict[frozenset, str]:
-    out: dict[frozenset, str] = {}
-    with (DATA / "wc2026_fixtures.csv").open(newline="", encoding="utf-8") as f:
-        for r in csv.DictReader(f):
-            if r["stage"] == "group":
-                out[frozenset((r["home_team"], r["away_team"]))] = r["date"]
-    return out
+def load_tournament_window(margin_days: int = 1) -> tuple:
+    """(start, end) dates bounding the whole tournament, from wc2026_groups.json.
+
+    Used to reject results from a wrong competition/season. Deliberately NOT
+    per-fixture: wc2026_fixtures.csv carries only coarse bucketed matchday dates
+    (off the real schedule by up to ~10 days), so a tight per-match date check
+    would drop legitimate played matches. The same-group pairing check is the
+    real fixture guard; this only catches gross wrong-tournament dates.
+    """
+    import datetime as _dt
+    with (DATA / "wc2026_groups.json").open() as f:
+        meta = json.load(f)
+    start = _dt.date.fromisoformat(meta["kickoff_date"]) - _dt.timedelta(days=margin_days)
+    end = _dt.date.fromisoformat(meta["final_date"]) + _dt.timedelta(days=margin_days)
+    return start, end
 
 
 def plausible_score(hg, ag) -> bool:
@@ -92,21 +100,21 @@ def plausible_score(hg, ag) -> bool:
 
 def group_fixture_issue(home: str, away: str, api_date: str,
                         group_of: dict[str, str],
-                        fixture_dates: dict[frozenset, str]) -> str | None:
+                        window: tuple) -> str | None:
     """Reason string when a reported group result cannot be a real fixture.
 
-    Catches gross source errors (mislabeled competition, wrong pairing) —
-    the +-3 day window tolerates timezone/reschedule quirks but rejects
-    matches attributed weeks off their scheduled slot.
+    Two same-group teams meet exactly once, so the pairing check confirms a real
+    group fixture; the date only needs to fall inside the tournament window to
+    rule out a mislabeled wrong-competition result.
     """
     if group_of.get(home) is None or group_of.get(home) != group_of.get(away):
         return "not a scheduled group fixture (teams not in the same group)"
-    sched = fixture_dates.get(frozenset((home, away)), "")
-    if sched and sched != "TBD" and len(api_date) >= 10:
+    if len(api_date) >= 10:
         from datetime import date
-        delta = abs((date.fromisoformat(api_date[:10]) - date.fromisoformat(sched)).days)
-        if delta > 3:
-            return f"dated {api_date[:10]} but scheduled {sched}"
+        d = date.fromisoformat(api_date[:10])
+        start, end = window
+        if not (start <= d <= end):
+            return f"dated {api_date[:10]} outside tournament window {start}..{end}"
     return None
 
 
@@ -270,7 +278,7 @@ def main(argv: list[str] | None = None) -> int:
     membership = load_group_membership()
     by_norm = {_norm(t): t for teams in membership.values() for t in teams}
     group_of = {t: g for g, teams in membership.items() for t in teams}
-    fixture_dates = load_group_fixture_dates()
+    window = load_tournament_window()
 
     existing = load_existing_rows(args.csv)
     group_scores: dict[frozenset, dict[str, int]] = {}
@@ -304,7 +312,7 @@ def main(argv: list[str] | None = None) -> int:
             continue
         if stage == "GROUP_STAGE":
             issue = group_fixture_issue(home, away, str(m.get("utcDate", "")),
-                                        group_of, fixture_dates)
+                                        group_of, window)
             if issue:
                 print(f"fetch_played: WARNING {home} vs {away}: {issue} -- skipped")
                 continue
@@ -374,7 +382,7 @@ __all__ = [
     "group_fixture_issue",
     "ko_winner",
     "load_existing_rows",
-    "load_group_fixture_dates",
+    "load_tournament_window",
     "merge_rows",
     "plausible_score",
     "resolve_r32_pairings",
