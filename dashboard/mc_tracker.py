@@ -506,10 +506,9 @@ with tab_score:
         st.info("Scorecard fills in once matches are played.")
     else:
         mp = pd.read_csv(pred_csv)
-        pcols = (["p_home_mle", "p_draw_mle", "p_away_mle"]
-                 if model_src == "MLE strength" and "p_home_mle" in mp.columns
-                 and mp["p_home_mle"].notna().any()
-                 else ["p_home", "p_draw", "p_away"])
+        has_mle = "p_home_mle" in mp.columns and mp["p_home_mle"].notna().any()
+        scored_src = model_src if (model_src == "Production (ELO+MV+star)" or has_mle) \
+            else "Production (ELO+MV+star)"
         played_g = mp[(mp["stage"] == "group") & mp["home_goals"].notna()
                       & (mp["home_goals"].astype(str) != "")].copy()
         if played_g.empty:
@@ -520,7 +519,15 @@ with tab_score:
             played_g["actual"] = np.select(
                 [played_g["hg"] > played_g["ag"], played_g["hg"] < played_g["ag"]],
                 ["h", "a"], default="d")
-            P = played_g[pcols].to_numpy(dtype=float)
+            prod = played_g[["p_home", "p_draw", "p_away"]].to_numpy(dtype=float)
+            if scored_src == "MLE strength":
+                P = played_g[["p_home_mle", "p_draw_mle", "p_away_mle"]].to_numpy(dtype=float)
+            elif scored_src == "Pool 50/50":
+                mle = played_g[["p_home_mle", "p_draw_mle", "p_away_mle"]].to_numpy(dtype=float)
+                g = np.sqrt(prod * mle)
+                P = g / g.sum(axis=1, keepdims=True)
+            else:
+                P = prod
             pick_idx = P.argmax(axis=1)
             pick = np.array(["h", "d", "a"])[pick_idx]
             onehot = np.array([{"h": [1, 0, 0], "d": [0, 1, 0], "a": [0, 0, 1]}[x]
@@ -530,9 +537,11 @@ with tab_score:
             brier_base = float(((uniform - onehot) ** 2).sum(axis=1).mean())
             n = len(played_g)
             hit = float((pick == played_g["actual"].to_numpy()).mean())
-            exact = int((played_g["score_pred"].astype(str)
+            score_c = ("score_pred_mle" if scored_src == "MLE strength"
+                       and "score_pred_mle" in played_g.columns else "score_pred")
+            exact = int((played_g[score_c].astype(str)
                          == played_g["hg"].astype(str) + "-" + played_g["ag"].astype(str)).sum()
-                        ) if "score_pred" in played_g.columns else 0
+                        ) if score_c in played_g.columns else 0
 
             a, b, c, d_ = st.columns(4)
             a.metric("Matches scored", n)
@@ -548,9 +557,12 @@ with tab_score:
             d_.metric("Exact scoreline 🎯", f"{exact}/{n}",
                       help="Times the single most likely scoreline was exactly right. "
                            "Low by nature — best-pick scorelines rarely clear ~13%.")
-            st.caption(f"Scored on {model_src}. Brier baseline = uniform 1/3-1/3-1/3 "
+            st.caption(f"Scored on {scored_src}. Brier baseline = uniform 1/3-1/3-1/3 "
                        f"({brier_base:.3f}); n={n} is small early on, so read trends, "
                        "not single-day swings.")
+
+
+with tab_stab:
     st.caption("Is the model's bias vs the market stable? Left: total distance per day "
                "(JSD + L1) — flat is good. Right: per-team edge heatmap — a row keeping its "
                "colour is an understood bias; a row flipping colour is the anomaly to investigate.")
