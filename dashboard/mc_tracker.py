@@ -100,7 +100,12 @@ def bracket_figure(ko: pd.DataFrame) -> go.Figure:
     children = {mid: (left, right) for mid, left, right in KO_ROUNDS}
 
     def slot(src: tuple) -> str:
-        return {"W": f"1{src[1]}", "RU": f"2{src[1]}"}.get(src[0], "3rd")
+        kind, key = src
+        if kind == "W":
+            return f"Group {key} winner"
+        if kind == "RU":
+            return f"Group {key} runner-up"
+        return "best 3rd place"
 
     slots = {mid: (slot(left), slot(right)) for mid, left, right in KO_R32}
     leaves: list = []
@@ -149,7 +154,7 @@ def bracket_figure(ko: pd.DataFrame) -> go.Figure:
             if mid in slots:
                 pa, pb = slots[mid]
             else:
-                pa, pb = f"W{children[mid][0]}", f"W{children[mid][1]}"
+                pa, pb = f"M{children[mid][0]} winner", f"M{children[mid][1]} winner"
             text, border = f"<i>{pa}</i><br><i>{pb}</i>", "rgba(127,127,127,0.25)"
             hover_t.append(f"M{mid}: waiting for {pa} vs {pb}")
         fig.add_annotation(x=x, y=yv, text=text, showarrow=False, align="left",
@@ -427,30 +432,33 @@ with tab_bracket:
             mp["p_away"] = ga / tot
         with st.expander("How to read this tab"):
             st.markdown(
-                "- **Knockout tree** — the bracket structure is FIFA's fixed draw; it fills "
-                "itself in automatically each morning as results land. Until a slot is "
-                "decided it shows a code: `1E` = group E winner, `2A` = group A runner-up, "
-                "`3rd` = a best-third-place slot, `W73` = winner of match 73.\n"
-                "- **Advance %** — the model's chance to win the tie by any route (regular "
-                "time, extra time, penalties), from the same locked model behind the "
-                "outright numbers. Green bold ✓ = actually advanced.\n"
-                "- **W/D/L bars** — width = probability (green: first team wins, grey: "
-                "draw, red: second team wins). These are locked pre-tournament and never "
-                "change; only results fill in.\n"
-                "- **✅/❌** — whether the model's most likely outcome happened. The model "
-                "speaks in probabilities, not picks: over many matches, about a quarter of "
-                "its 75% favourites *should* lose. The interesting signal is systematic "
-                "misses, not single ones.\n"
-                "- **pred 2-0 (11%)** — the single most likely of the 81 scorelines the "
-                "model prices (0-0 through 8-8). Even the best pick rarely exceeds ~13%, "
-                "so most will miss by design; 🎯 marks an exact hit.")
+                "- **Knockout tree** — FIFA's fixed bracket; it fills in automatically each "
+                "morning as results land. An undecided box names who feeds into it — "
+                "*Group E winner*, *Group A runner-up*, *best 3rd place*, *M73 winner* — and "
+                "shows the real teams once they're known.\n"
+                "- **Advance %** — the model's chance to win that tie by any route (normal "
+                "time, extra time or penalties). A green name with ✓ actually went through.\n"
+                "- **Model lean** — on each group match, the most likely of win / draw / win, "
+                "with its probability; the bar shows the full split (🟩 left team · ⬜ draw · "
+                "🟥 right team). Locked pre-tournament, never changes.\n"
+                "- **right / upset** — after a match, whether the side the model leaned on "
+                "actually won. The model talks in probabilities, not tips: about a quarter "
+                "of its 75% leans *should* lose. A run of upsets is the signal, not one.\n"
+                "- **likely 2-0 / nailed 2-0 🎯** — the single most likely of the 81 scorelines "
+                "the model prices. Even the top pick rarely beats ~13%, so most miss by "
+                "design; 🎯 marks an exact hit.")
 
         st.subheader("Knockout bracket")
-        st.caption("Hover any box for full names and details. The 3rd-place play-off "
-                   "is not simulated (v1 scope).")
+        st.caption("Each box: the two sides with the model's % chance to advance; ✓ marks who "
+                   "went through. Hover for full team names. The 3rd-place play-off is not "
+                   "simulated (v1 scope).")
         st.plotly_chart(bracket_figure(mp[mp["stage"] != "group"]), width="stretch")
 
         st.subheader("Group stage")
+        st.caption("Each match shows the model's lean — the most likely of win / draw / win "
+                   "(the bar: 🟩 left team · ⬜ draw · 🟥 right team) and its single most likely "
+                   "score. Once played: **bold score**, then whether the model's lean was "
+                   "**right** or an **upset**, and 🎯 if it nailed the exact score.")
         groups = mp[mp["stage"] == "group"]
         score_col = ("score_pred_mle"
                      if model_src == "MLE strength" and "score_pred_mle" in groups.columns
@@ -465,34 +473,31 @@ with tab_bracket:
             for _, m in sub.iterrows():
                 h, a = m["home_team"], m["away_team"]
                 bar = prob_bar(m["p_home"], m["p_draw"], m["p_away"])
+                lean, leanp = max([(h, m["p_home"]), ("Draw", m["p_draw"]), (a, m["p_away"])],
+                                  key=lambda x: x[1])
+                lean_txt = f"leans <b>{lean}</b> {leanp * 100:.0f}%"
                 sp = m.get(score_col) if score_col in sub.columns else None
                 sp = sp if isinstance(sp, str) and sp else None
-                sp_txt = ""
-                if sp:
-                    if score_col == "score_pred" and pd.notna(m.get("score_prob")):
-                        sp_txt = f" · pred {sp} ({m['score_prob'] * 100:.0f}%)"
-                    else:
-                        sp_txt = f" · pred {sp}"
+                score_txt = f", likely {sp}" if sp else ""
                 if pd.notna(m["home_goals"]) and str(m["home_goals"]) != "":
                     hg, ag = int(m["home_goals"]), int(m["away_goals"])
-                    actual = "h" if hg > ag else ("a" if ag > hg else "d")
-                    pick = max([("h", m["p_home"]), ("d", m["p_draw"]), ("a", m["p_away"])],
-                               key=lambda x: x[1])[0]
-                    mark = "✅" if pick == actual else "❌"
+                    actual = h if hg > ag else (a if ag > hg else "Draw")
+                    verdict = ("<span style='color:#2a8a2a'>✓ right</span>" if lean == actual
+                               else "<span style='color:#cc3b2f'>✗ upset</span>")
                     hit = " 🎯" if sp == f"{hg}-{ag}" else ""
-                    col.markdown(f"<small>{h} <b>{hg}–{ag}</b> {a} {mark}{sp_txt}{hit}"
-                                 f"</small>{bar}",
+                    col.markdown(f"<small>{h} <b>{hg}–{ag}</b> {a} — model {lean_txt} "
+                                 f"{verdict}{(' · nailed ' + sp + hit) if hit else ''}</small>{bar}",
                                  unsafe_allow_html=True)
                     pts[h] = pts.get(h, 0) + (3 if hg > ag else (1 if hg == ag else 0))
                     pts[a] = pts.get(a, 0) + (3 if ag > hg else (1 if hg == ag else 0))
                     gd[h] = gd.get(h, 0) + hg - ag
                     gd[a] = gd.get(a, 0) + ag - hg
                 else:
-                    col.markdown(f"<small>{h} – {a}<i>{sp_txt}</i></small>{bar}",
+                    col.markdown(f"<small>{h} – {a} — model {lean_txt}{score_txt}</small>{bar}",
                                  unsafe_allow_html=True)
             if pts:
                 table = sorted(pts, key=lambda t: (-pts[t], -gd[t]))
-                col.caption("Standings: " + " · ".join(f"{t} {pts[t]}" for t in table))
+                col.caption("Table: " + " · ".join(f"{t} {pts[t]}pt" for t in table))
             col.markdown("")
 
 
