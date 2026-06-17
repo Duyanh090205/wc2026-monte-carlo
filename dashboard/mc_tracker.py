@@ -495,9 +495,13 @@ with tab_bracket:
                     else:
                         word, colour = "✗ upset", "#cc3b2f"            # the other side won
                     verdict = f"<span style='color:{colour}'>{word}</span>"
-                    hit = " 🎯" if sp == f"{hg}-{ag}" else ""
+                    if sp:
+                        score_played = (f" · nailed {sp} 🎯" if sp == f"{hg}-{ag}"
+                                        else f" · predicted {sp}")
+                    else:
+                        score_played = ""
                     col.markdown(f"<small>{h} <b>{hg}–{ag}</b> {a} — model {lean_txt} "
-                                 f"{verdict}{(' · nailed ' + sp + hit) if hit else ''}</small>{bar}",
+                                 f"{verdict}{score_played}</small>{bar}",
                                  unsafe_allow_html=True)
                     pts[h] = pts.get(h, 0) + (3 if hg > ag else (1 if hg == ag else 0))
                     pts[a] = pts.get(a, 0) + (3 if ag > hg else (1 if hg == ag else 0))
