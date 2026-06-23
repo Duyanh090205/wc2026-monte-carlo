@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import csv
 import os
-import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -39,7 +38,7 @@ def _row(r: dict) -> dict:
     return out
 
 
-def main(argv: list[str] | None = None) -> int:
+def main() -> int:
     import requests
 
     url = os.environ.get("SUPABASE_URL")
@@ -54,11 +53,21 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     with csv_path.open(newline="", encoding="utf-8") as f:
         rows = [_row(r) for r in csv.DictReader(f)]
-    print(f"Upserting {len(rows)} rows to group_winner_log ...")
+    dates = sorted({r["date"] for r in rows})
+    print(f"Upserting {len(rows)} rows to group_winner_log ({dates[0]}..{dates[-1]}) ...")
 
-    endpoint = f"{url.rstrip('/')}/rest/v1/group_winner_log?on_conflict=date,group,team"
-    headers = {"apikey": key, "Authorization": f"Bearer {key}",
-               "Content-Type": "application/json",
+    base = f"{url.rstrip('/')}/rest/v1/group_winner_log"
+    auth = {"apikey": key, "Authorization": f"Bearer {key}"}
+    # Clean-replace the backfilled window first, so rows dropped by a fixed
+    # regenerate (e.g. resolved-group Poly garbage) don't linger from a prior seed.
+    dele = requests.delete(
+        f"{base}?date=gte.{dates[0]}&date=lte.{dates[-1]}",
+        headers={**auth, "Prefer": "return=minimal"}, timeout=30)
+    dele.raise_for_status()
+    print(f"  cleared existing rows in {dates[0]}..{dates[-1]}")
+
+    endpoint = f"{base}?on_conflict=date,group,team"
+    headers = {**auth, "Content-Type": "application/json",
                "Prefer": "resolution=merge-duplicates,return=minimal"}
     for i in range(0, len(rows), 500):
         batch = rows[i:i + 500]

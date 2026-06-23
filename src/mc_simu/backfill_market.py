@@ -91,7 +91,7 @@ def fetch_poly_history(start_ts: int, end_ts: int, timeout: int = 30,
             continue
         for p in r.json().get("history", []):
             t, px = p.get("t"), p.get("p")
-            if t is None or px is None or not (0 < float(px) < 1):
+            if t is None or px is None or not (0 < float(px) <= 1):
                 continue
             # fidelity=1440 stamps ~00:00 UTC = that day's open = prior day's close;
             # shift back a full day so date D reflects end-of-D market (the D+1 00:00

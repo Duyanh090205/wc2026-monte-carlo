@@ -209,7 +209,7 @@ def fetch_poly_group_winner(start_ts: int, end_ts: int, timeout: int = 30,
                 continue
             for p in r.json().get("history", []):
                 t, px = p.get("t"), p.get("p")
-                if t is None or px is None or not (0 < float(px) < 1):
+                if t is None or px is None or not (0 < float(px) <= 1):
                     continue
                 # fidelity=1440 stamps each point a few seconds past 00:00 UTC =
                 # the OPEN of that day = the CLOSE of the prior day. Shift back a
@@ -241,6 +241,12 @@ def build_rows(model: dict, poly: dict, groups: dict[str, list[str]]) -> list[di
             mdl = model.get(d, {}).get("gw", {}).get(g, {})
             matches = model.get(d, {}).get("matches", "")
             pm_raw = {t: v for t, v in poly.get(d, {}).get(g, {}).items() if t in teams}
+            # Once a group resolves, the winner's market closes and prices-history
+            # stops returning its points; only a residual losing market may stay
+            # open. Devigging that lone tiny price gives a bogus ~100%. Drop Poly
+            # for the cell when the survivors no longer sum near 1 (winner's mass gone).
+            if sum(pm_raw.values()) < 0.5:
+                pm_raw = {}
             pm_dv = _devig(pm_raw)
             order = sorted(teams, key=lambda t: -(mdl.get(t) or pm_dv.get(t) or 0))
             for t in order:

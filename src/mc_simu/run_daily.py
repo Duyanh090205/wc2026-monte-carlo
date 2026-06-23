@@ -331,7 +331,7 @@ def fetch_poly_group_winner_now(timeout: int = 30) -> dict[str, dict[str, float]
             for m in r.json().get("markets", []):
                 team = _norm(m.get("groupItemTitle") or "")
                 px = m.get("lastTradePrice")
-                if not team or team == "Other" or px is None or not (0 < float(px) < 1):
+                if not team or team == "Other" or px is None or not (0 < float(px) <= 1):
                     continue
                 out.setdefault(letter, {})[team] = float(px)
         except Exception as e:
@@ -367,6 +367,9 @@ def log_group_winner(res: dict, date: str, played) -> int:
     for g, teams in groups.items():
         mdl = model.get(g, {})
         pm_raw = {t: v for t, v in poly.get(g, {}).items() if t in teams}
+        # winner's market resolved -> survivors don't sum near 1 -> devig is bogus
+        if sum(pm_raw.values()) < 0.5:
+            pm_raw = {}
         s = sum(pm_raw.values())
         pm_dv = {t: v / s for t, v in pm_raw.items()} if s > 0 else {}
         for t in teams:
