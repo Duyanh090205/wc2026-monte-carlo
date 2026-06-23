@@ -67,6 +67,33 @@ def load_log() -> pd.DataFrame:
     return df
 
 
+GW_CSV = os.path.join(os.path.dirname(__file__), "..", "data", "mc_simu", "group_winner_log.csv")
+
+
+@st.cache_data(ttl=600)
+def load_gw() -> pd.DataFrame:
+    """Group-winner series (model vs Polymarket). Supabase table group_winner_log
+    when present, else the local backfill CSV. Empty frame when neither exists —
+    the tab degrades to an info box rather than erroring."""
+    url, key = _cred("SUPABASE_URL"), _cred("SUPABASE_ANON_KEY")
+    df = pd.DataFrame()
+    if url and key:
+        r = requests.get(
+            f"{url.rstrip('/')}/rest/v1/group_winner_log?select=*&order=date.asc&limit=100000",
+            headers={"apikey": key, "Authorization": f"Bearer {key}"}, timeout=30)
+        if r.status_code == 200:
+            df = pd.DataFrame(r.json())
+    if df.empty and os.path.exists(GW_CSV):
+        df = pd.read_csv(GW_CSV)
+    if df.empty:
+        return df
+    df["date"] = pd.to_datetime(df["date"])
+    for c in ("model_pct", "pm_raw_pct", "pm_devig_pct", "model_state_matches"):
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+    return df
+
+
 def spread_labels(xn: np.ndarray, yn: np.ndarray, labeled: list) -> list:
     """Assign per-point textposition so labels of nearby points don't overlap."""
     cycle = ["top center", "bottom center", "middle right", "middle left"]
@@ -294,9 +321,10 @@ with st.expander("How to read these numbers"):
         "from re-conditioning on played results, never from re-fitting. So a *stable* bias "
         "vs the market is expected and fine — the signal is a *change* in that bias.")
 
-tab_today, tab_scatter, tab_traj, tab_bracket, tab_score, tab_stab, tab_data = st.tabs(
-    ["Today's edge", "Model vs market", "Trajectories", "Bracket", "Scorecard",
-     "Bias stability", "Data"])
+(tab_today, tab_scatter, tab_traj, tab_gw, tab_bracket, tab_score, tab_stab,
+ tab_data) = st.tabs(
+    ["Today's edge", "Model vs market", "Trajectories", "Group winner", "Bracket",
+     "Scorecard", "Bias stability", "Data"])
 
 
 with tab_today:
@@ -406,6 +434,61 @@ with tab_traj:
                       yaxis_title="champion prob (%)",
                       xaxis=dict(range=[x0, x1], tickformat="%b %d", dtick=86_400_000))
     st.plotly_chart(fig, width="stretch")
+
+
+with tab_gw:
+    st.caption("Who wins each group — model (solid line) vs Polymarket (✕), devigged "
+               "within the group so both sum to 100%. This market is only live during the "
+               "group stage; after it resolves the series is a closed calibration record. "
+               "Kalshi lists no group-winner market and FairLine is snapshot-only, so "
+               "Polymarket is the only market line here.")
+    gw = load_gw()
+    if gw.empty:
+        st.info("No group-winner log yet. Generate it with "
+                "`python -m mc_simu.backfill_group_winner` (writes "
+                "data/mc_simu/group_winner_log.csv).")
+    else:
+        groups = sorted(gw["group"].unique())
+        g = st.selectbox("Group", groups, format_func=lambda x: f"Group {x}")
+        sub = gw[gw["group"] == g]
+        carried = sub.dropna(subset=["model_pct"])
+        carried = carried[carried["model_state_matches"] ==
+                          carried["model_state_matches"].max()]
+        fig = go.Figure()
+        palette = px.colors.qualitative.Plotly
+        for i, t in enumerate(sorted(sub["team"].unique())):
+            subt = sub[sub["team"] == t].sort_values("date")
+            c = palette[i % len(palette)]
+            fig.add_scatter(x=subt["date"], y=subt["model_pct"], name=t,
+                            mode="lines+markers", line=dict(color=c, width=2),
+                            connectgaps=False)
+            fig.add_scatter(x=subt["date"], y=subt["pm_devig_pct"], name=f"{t} Poly",
+                            mode="markers", marker=dict(color=c, symbol="x", size=10),
+                            showlegend=False)
+        x0 = pd.Timestamp(gw["date"].min()) - pd.Timedelta(hours=12)
+        x1 = pd.Timestamp(gw["date"].max()) + pd.Timedelta(hours=12)
+        fig.update_layout(template=TPL, height=520, hovermode="x unified",
+                          title=f"Group {g} winner — model (line) vs Polymarket (✕)",
+                          yaxis_title="P(win group) (%)",
+                          xaxis=dict(range=[x0, x1], tickformat="%b %d", dtick=86_400_000))
+        st.plotly_chart(fig, width="stretch")
+        # Carry-forward only when the latest state repeats across several trailing
+        # days (git-history backfill); the football-data backfill gives each day its
+        # own state, so suppress the warning there.
+        per_day = sub.dropna(subset=["model_state_matches"]).groupby("date")[
+            "model_state_matches"].max()
+        stale = int(per_day.max()) if len(per_day) else 0
+        carried = per_day[per_day == stale]
+        if len(carried) > 1:
+            st.caption(f"Model line is exact through the last distinct result state "
+                       f"({stale} group matches) and **carried forward** from "
+                       f"{pd.Timestamp(carried.index.min()).strftime('%b %d')} — that day's "
+                       f"state repeats because no fresh results were available locally. "
+                       f"Run `backfill_group_winner --from-api` (results token) to fill precisely.")
+        else:
+            st.caption("Model re-conditioned per day on real match dates "
+                       "(football-data.org); ✕ = Polymarket the same day. A team the model "
+                       "has eliminated (0%) while the market still prices it is a live gap.")
 
 
 with tab_bracket:

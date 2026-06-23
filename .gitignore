@@ -13,6 +13,8 @@ data/mc_simu/loto_cv_*.csv
 data/mc_simu/replay_*
 data/mc_simu/_*.json
 data/mc_simu/daily_log.csv
+data/mc_simu/market_history.csv
+data/mc_simu/group_winner_log.csv
 
 # Internal audit + preliminary report docs — kept local, not pushed.
 # (scope*.md, before_world_cup_audit.md, mv_historical_validation.md in audits/ ARE tracked.)

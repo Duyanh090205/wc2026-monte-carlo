@@ -108,10 +108,17 @@ def production_ratings() -> dict[str, float]:
     return apply_star_bonus(ratings, bonus_X=15.0, star_counts=load_star_counts())
 
 
-def model_champion_probs(played, n: int, seed: int) -> dict[str, float]:
+def run_production_sim(played, n: int, seed: int) -> dict:
+    """Full production MC result (champion + group_winners) on the conditioned
+    bracket. Shared so the daily group-winner log reuses the champion sim instead
+    of paying for a second 1M run."""
     sg.ELO_GOALS_DENOMINATOR = 1400.0
     bundle = load_wc2026_bundle(production_ratings(), params=ModelParams(diagonal_inflation=0.20))
-    res = run_monte_carlo(bundle, n_iterations=n, seed=seed, progress=False, played=played)
+    return run_monte_carlo(bundle, n_iterations=n, seed=seed, progress=False, played=played)
+
+
+def model_champion_probs(played, n: int, seed: int) -> dict[str, float]:
+    res = run_production_sim(played, n, seed)
     return normalize({t: s["mc_fair_prob"] for t, s in res["champion"].items()})
 
 
@@ -301,6 +308,80 @@ def snapshot_rows(date: str, common: list[str], mdl: dict, mkt_cons: dict,
     return rows
 
 
+GW_GROUP_LETTERS = "ABCDEFGHIJKL"
+POLY_GAMMA = "https://gamma-api.polymarket.com"
+
+
+def fetch_poly_group_winner_now(timeout: int = 30) -> dict[str, dict[str, float]]:
+    """{group: {team: last price}} current Polymarket group-winner markets.
+
+    Polymarket is the only venue with group-winner markets (Kalshi has none).
+    Degrades per-group on any failure — a missing group just drops out."""
+    import requests
+
+    from mc_simu.tune_to_market import _norm
+    out: dict[str, dict[str, float]] = {}
+    for letter in GW_GROUP_LETTERS:
+        try:
+            r = requests.get(
+                f"{POLY_GAMMA}/events/slug/world-cup-group-{letter.lower()}-winner",
+                timeout=timeout)
+            if r.status_code != 200:
+                continue
+            for m in r.json().get("markets", []):
+                team = _norm(m.get("groupItemTitle") or "")
+                px = m.get("lastTradePrice")
+                if not team or team == "Other" or px is None or not (0 < float(px) < 1):
+                    continue
+                out.setdefault(letter, {})[team] = float(px)
+        except Exception as e:
+            print(f"group-winner Poly {letter} fetch failed: {e}")
+    return out
+
+
+def push_group_winner(rows: list[dict]) -> bool:
+    """Upsert group-winner rows into Supabase `group_winner_log` (date,group,team)."""
+    url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_KEY")
+    if not url or not key:
+        return False
+    import requests
+    resp = requests.post(
+        f"{url.rstrip('/')}/rest/v1/group_winner_log?on_conflict=date,group,team",
+        headers={"apikey": key, "Authorization": f"Bearer {key}",
+                 "Content-Type": "application/json",
+                 "Prefer": "resolution=merge-duplicates,return=minimal"},
+        json=rows, timeout=30)
+    resp.raise_for_status()
+    return True
+
+
+def log_group_winner(res: dict, date: str, played) -> int:
+    """One day of group-winner (model vs Polymarket) -> Supabase. Reuses the
+    champion sim's result; devigs Polymarket within each group. Returns rows pushed."""
+    groups = json.load(open(DATA / "wc2026_groups.json"))["groups"]
+    model = {g: {t: s["mc_fair_prob"] for t, s in teams.items()}
+             for g, teams in res["group_winners"].items()}
+    poly = fetch_poly_group_winner_now()
+    matches = len(played.group_scores)
+    rows = []
+    for g, teams in groups.items():
+        mdl = model.get(g, {})
+        pm_raw = {t: v for t, v in poly.get(g, {}).items() if t in teams}
+        s = sum(pm_raw.values())
+        pm_dv = {t: v / s for t, v in pm_raw.items()} if s > 0 else {}
+        for t in teams:
+            if t not in mdl and t not in pm_raw:
+                continue
+            rows.append({
+                "date": date, "group": g, "team": t,
+                "model_pct": round(mdl.get(t, 0.0) * 100, 3) if mdl else None,
+                "model_state_matches": matches,
+                "pm_raw_pct": round(pm_raw[t] * 100, 3) if t in pm_raw else None,
+                "pm_devig_pct": round(pm_dv[t] * 100, 3) if t in pm_dv else None,
+            })
+    return len(rows) if rows and push_group_winner(rows) else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--date", default=_dt.date.today().isoformat())
@@ -330,7 +411,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Match predictions export FAILED: {e}")
         return 0
 
-    model = model_champion_probs(played, args.n, args.seed)
+    res = run_production_sim(played, args.n, args.seed)
+    model = normalize({t: s["mc_fair_prob"] for t, s in res["champion"].items()})
     try:
         mle = mle_champion_probs(played, args.n, args.seed)
     except Exception as e:
@@ -368,6 +450,21 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as e:
         print(f"Match predictions export FAILED (daily log intact): {e}")
 
+    # Group-winner (model vs Polymarket) — only meaningful while the group stage
+    # is live; once all 72 group matches are in, the winners are decided (0/1) and
+    # Polymarket's markets resolve. Reuses res, so no extra sim.
+    if len(played.group_scores) < 72:
+        try:
+            n_gw = log_group_winner(res, args.date, played)
+            if n_gw:
+                print(f"Upserted {n_gw} rows to Supabase group_winner_log")
+            else:
+                print("Group-winner: no rows pushed (no Supabase creds or empty market)")
+        except Exception as e:
+            print(f"Group-winner log FAILED (daily log intact): {e}")
+    else:
+        print("Group stage complete (72/72) — group-winner logging stopped")
+
     # daily summary
     j = jsd(mdl, mkt_cons, common)
     l1 = sum(abs(mdl[t] - mkt_cons[t]) for t in common) * 100
@@ -387,9 +484,10 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-__all__ = ["production_ratings", "model_champion_probs", "mle_champion_probs",
-           "live_market", "fetch_market_with_retry", "snapshot_rows",
-           "push_supabase", "main"]
+__all__ = ["production_ratings", "run_production_sim", "model_champion_probs",
+           "mle_champion_probs", "live_market", "fetch_market_with_retry",
+           "snapshot_rows", "push_supabase", "fetch_poly_group_winner_now",
+           "push_group_winner", "log_group_winner", "main"]
 
 
 if __name__ == "__main__":

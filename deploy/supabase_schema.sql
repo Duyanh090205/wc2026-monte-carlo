@@ -29,3 +29,23 @@ alter table daily_log enable row level security;
 -- Dashboard reads with the anon key; writes go through the service key (bypasses RLS).
 drop policy if exists "anon read" on daily_log;
 create policy "anon read" on daily_log for select to anon using (true);
+
+-- Migration 2026-06-22: group-winner series (model vs Polymarket), one row per
+-- (date, group, team). Separate table — different shape from daily_log (per-group,
+-- group-stage only). "group" is a reserved word, hence quoted. pm_raw vs pm_devig
+-- keep the overround visible (raw) alongside the comparable probability (devig).
+create table if not exists group_winner_log (
+    date                 date    not null,
+    "group"              text    not null,
+    team                 text    not null,
+    model_pct            double precision,
+    model_state_matches  smallint,
+    pm_raw_pct           double precision,
+    pm_devig_pct         double precision,
+    inserted_at          timestamptz not null default now(),
+    primary key (date, "group", team)
+);
+
+alter table group_winner_log enable row level security;
+drop policy if exists "anon read" on group_winner_log;
+create policy "anon read" on group_winner_log for select to anon using (true);
