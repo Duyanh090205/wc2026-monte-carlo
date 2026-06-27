@@ -692,6 +692,9 @@ with tab_stab:
                     template=TPL, height=26 * len(piv) + 140,
                     title="Per-team edge through time (pp) — a STABLE row colour = understood bias;<br>"
                           "<sup>a row that flips colour is the anomaly worth investigating</sup>")
+    # Force a categorical x-axis: the "MM-DD" labels otherwise get auto-coerced to a
+    # date axis and rendered as the wrong months (e.g. 06-11 -> Nov), not the real June dates.
+    fig.update_xaxes(type="category")
     fig.update_layout(coloraxis_colorbar_title="pp")
     c_hm.plotly_chart(fig, width="stretch")
 
