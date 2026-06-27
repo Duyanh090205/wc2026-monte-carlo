@@ -687,6 +687,10 @@ with tab_stab:
     piv = (df[df["team"].isin(top_teams)]
            .pivot_table(index="team", columns="date", values="abs_pp")
            .reindex(top_teams))
+    # Eliminated teams drop out of the market (no pm_pct) so their later cells are
+    # NaN and render as black bands. Their edge is genuinely ~0 once out (model 0%
+    # vs market 0%), so fill with 0 -> neutral colour instead of a broken-looking gap.
+    piv = piv.fillna(0)
     piv.columns = [pd.Timestamp(c).strftime("%m-%d") for c in piv.columns]
     fig = px.imshow(piv, color_continuous_scale="RdYlGn", zmin=-3, zmax=3, aspect="auto",
                     template=TPL, height=26 * len(piv) + 140,
