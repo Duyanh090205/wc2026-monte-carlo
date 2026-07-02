@@ -43,8 +43,8 @@ from mc_simu.run_phase3_baselines import load_ratings_for_source  # noqa: E402
 from mc_simu.single_game import ModelParams  # noqa: E402
 from mc_simu.star_presence import apply_star_bonus, load_star_counts  # noqa: E402
 from mc_simu.tournaments.wc2026 import (  # noqa: E402
-    LATER_ROUNDS, build_sim_context, load_played_results, load_wc2026_bundle,
-    run_monte_carlo,
+    LATER_ROUNDS, REACH_ROUNDS, build_sim_context, load_played_results,
+    load_wc2026_bundle, run_monte_carlo,
 )
 from mc_simu.tune_to_market import jsd, normalize  # noqa: E402
 from mc_simu.wc2026_vs_multi import load_prices_full  # noqa: E402
@@ -406,6 +406,82 @@ def log_group_winner(res: dict, date: str, played) -> int:
     return len(rows) if rows and push_group_winner(rows) else 0
 
 
+REACH_SLUGS = {"r16": "world-cup-nation-to-reach-round-of-16",
+               "qf": "world-cup-nation-to-reach-quarterfinals",
+               "sf": "world-cup-nation-to-reach-semifinals",
+               "final": "world-cup-nation-to-reach-final"}
+REACH_SLOTS = {"r16": 16, "qf": 8, "sf": 4, "final": 2}
+
+
+def fetch_poly_reach_now(timeout: int = 30) -> dict[str, dict[str, float]]:
+    """{round: {team: last price}} current Polymarket 'Nation To Reach <round>'
+    events. Kalshi has no per-round markets. Degrades per round on any failure."""
+    import requests
+
+    from mc_simu.tune_to_market import _norm
+    out: dict[str, dict[str, float]] = {}
+    for rnd, slug in REACH_SLUGS.items():
+        try:
+            r = requests.get(f"{POLY_GAMMA}/events/slug/{slug}", timeout=timeout)
+            if r.status_code != 200:
+                continue
+            for m in r.json().get("markets", []):
+                team = _norm(m.get("groupItemTitle") or "")
+                px = m.get("lastTradePrice")
+                if not team or px is None or not (0 < float(px) <= 1):
+                    continue
+                out.setdefault(rnd, {})[team] = float(px)
+        except Exception as e:
+            print(f"reach Poly {rnd} fetch failed: {e}")
+    return out
+
+
+def push_reach(rows: list[dict]) -> bool:
+    """Upsert reach rows into Supabase `reach_log` (date,round,team)."""
+    url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_KEY")
+    if not url or not key:
+        return False
+    import requests
+    resp = requests.post(
+        f"{url.rstrip('/')}/rest/v1/reach_log?on_conflict=date,round,team",
+        headers={"apikey": key, "Authorization": f"Bearer {key}",
+                 "Content-Type": "application/json",
+                 "Prefer": "resolution=merge-duplicates,return=minimal"},
+        json=rows, timeout=30)
+    resp.raise_for_status()
+    return True
+
+
+def log_reach(res: dict, date: str, played) -> int:
+    """One day of reach-round (model vs Polymarket) -> Supabase. Reuses the
+    champion sim's result. Devig scales the round's quotes to its slot count
+    (16/8/4/2) — the round-level analogue of within-group normalization —
+    skipped when quotes cover less than half the slots (resolved/partial event).
+    Returns rows pushed."""
+    teams48 = _teams48()
+    poly = fetch_poly_reach_now()
+    state = len(played.group_scores) + len(played.ko_winners)
+    rows = []
+    for rnd in REACH_ROUNDS:
+        mdl = {t: s["mc_fair_prob"] for t, s in res["reach"].get(rnd, {}).items()}
+        pm_raw = {t: v for t, v in poly.get(rnd, {}).items() if t in teams48}
+        s = sum(pm_raw.values())
+        slots = REACH_SLOTS[rnd]
+        pm_dv = ({t: min(1.0, v * slots / s) for t, v in pm_raw.items()}
+                 if s >= slots * 0.5 else {})
+        for t in teams48:
+            if t not in mdl and t not in pm_raw:
+                continue
+            rows.append({
+                "date": date, "round": rnd, "team": t,
+                "model_pct": round(mdl.get(t, 0.0) * 100, 3),
+                "model_state_matches": state,
+                "pm_raw_pct": round(pm_raw[t] * 100, 3) if t in pm_raw else None,
+                "pm_devig_pct": round(pm_dv[t] * 100, 3) if t in pm_dv else None,
+            })
+    return len(rows) if rows and push_reach(rows) else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--date", default=_dt.date.today().isoformat())
@@ -488,6 +564,20 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Group-winner log FAILED (daily log intact): {e}")
     else:
         print("Group stage complete (72/72) — group-winner logging stopped")
+
+    # Reach rounds (model vs Polymarket) — live through the whole knockout
+    # stage; each round's series closes as it resolves. Reuses res, no extra sim.
+    if 104 not in played.ko_winners:
+        try:
+            n_reach = log_reach(res, args.date, played)
+            if n_reach:
+                print(f"Upserted {n_reach} rows to Supabase reach_log")
+            else:
+                print("Reach: no rows pushed (no Supabase creds or empty market)")
+        except Exception as e:
+            print(f"Reach log FAILED (daily log intact): {e}")
+    else:
+        print("Final decided — reach logging stopped")
 
     # daily summary
     j = jsd(mdl, mkt_cons, common)

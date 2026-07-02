@@ -49,3 +49,23 @@ create table if not exists group_winner_log (
 alter table group_winner_log enable row level security;
 drop policy if exists "anon read" on group_winner_log;
 create policy "anon read" on group_winner_log for select to anon using (true);
+
+-- Migration 2026-07-02: knockout reach series (model vs Polymarket), one row per
+-- (date, round, team). round in ('r16','qf','sf','final'); reach = wins the
+-- feeder tie, matching Polymarket "Nation To Reach <round>" events. pm_devig
+-- scales the round's quotes to its slot count (16/8/4/2).
+create table if not exists reach_log (
+    date                 date    not null,
+    round                text    not null,
+    team                 text    not null,
+    model_pct            double precision,
+    model_state_matches  smallint,
+    pm_raw_pct           double precision,
+    pm_devig_pct         double precision,
+    inserted_at          timestamptz not null default now(),
+    primary key (date, round, team)
+);
+
+alter table reach_log enable row level security;
+drop policy if exists "anon read" on reach_log;
+create policy "anon read" on reach_log for select to anon using (true);

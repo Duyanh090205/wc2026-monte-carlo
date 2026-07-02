@@ -100,6 +100,11 @@ python -m mc_simu.run_daily --n 1000000   # CI uses 1M; default 50k for quick lo
 # with archived oddschecker market overlay (Wayback)
 python -m mc_simu.replay_wc_conditioned --year 2022 --plot
 
+# Backfill the per-day series the dashboard's Group winner / Knockout rounds
+# tabs read (model re-simulated on git as-of states vs Polymarket history)
+python -m mc_simu.backfill_group_winner   # -> data/mc_simu/group_winner_log.csv
+python -m mc_simu.backfill_reach          # -> data/mc_simu/reach_log.csv
+
 # Dashboard (local preview reads daily_log.csv; deployed app reads Supabase)
 streamlit run dashboard/mc_tracker.py
 ```

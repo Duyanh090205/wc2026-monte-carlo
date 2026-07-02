@@ -182,9 +182,14 @@ def model_series(dates: list[str], n: int, seed: int,
 # ── Polymarket side ───────────────────────────────────────────────────────────
 
 
-def fetch_poly_group_winner(start_ts: int, end_ts: int, timeout: int = 30,
+def fetch_poly_group_winner(timeout: int = 30,
                             pause: float = 0.12) -> dict[str, dict[str, dict[str, float]]]:
-    """{date: {group: {team: raw_price}}} from world-cup-group-{a..l}-winner."""
+    """{date: {group: {team: raw_price}}} from world-cup-group-{a..l}-winner.
+
+    interval=max instead of an explicit startTs/endTs window: the CLOB rejects
+    windows past ~2 weeks ("interval is too long"); max returns the market's
+    whole daily history and main() date-filters the assembled rows.
+    """
     import requests
     out: dict[str, dict[str, dict[str, float]]] = {}
     for letter in GROUP_LETTERS:
@@ -203,8 +208,8 @@ def fetch_poly_group_winner(start_ts: int, end_ts: int, timeout: int = 30,
             except (json.JSONDecodeError, IndexError):
                 continue
             r = requests.get(f"{POLY_CLOB}/prices-history",
-                             params={"market": yes_tok, "startTs": start_ts,
-                                     "endTs": end_ts, "fidelity": 1440}, timeout=timeout)
+                             params={"market": yes_tok, "interval": "max",
+                                     "fidelity": 1440}, timeout=timeout)
             if r.status_code != 200:
                 continue
             for p in r.json().get("history", []):
@@ -278,16 +283,12 @@ def main(argv: list[str] | None = None) -> int:
                         "dates (needs FOOTBALL_DATA_TOKEN) instead of git history")
     args = p.parse_args(argv)
 
-    start_ts = int(_dt.datetime.fromisoformat(args.start)
-                   .replace(tzinfo=_dt.timezone.utc).timestamp())
-    end_ts = int((_dt.datetime.fromisoformat(args.end) + _dt.timedelta(days=1))
-                 .replace(tzinfo=_dt.timezone.utc).timestamp())
     groups = json.load(open(DATA / "wc2026_groups.json"))["groups"]
     dates = _daterange(args.start, args.end)
     banner(f"Backfill group-winner {args.start} -> {args.end}")
 
     print("Polymarket group-winner history:")
-    poly = fetch_poly_group_winner(start_ts, end_ts)
+    poly = fetch_poly_group_winner()
 
     model = {}
     if not args.no_model:

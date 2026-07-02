@@ -138,7 +138,7 @@ class TestSingleIterationSmoke:
     def test_one_iter_runs_and_returns_valid_champion(self, bundle) -> None:
         sim = build_sim_context(bundle)
         rng = np.random.default_rng(42)
-        champion, group_winners = simulate_tournament(
+        champion, group_winners, match_winners = simulate_tournament(
             group_cdfs_per_group=sim.group_cdfs_per_group,
             group_team_pairs=sim.group_team_pairs,
             r32_table=sim.r32_table,
@@ -202,6 +202,25 @@ class TestProbabilityInvariants:
             for team in result["group_winners"][g]:
                 assert team in bundle.group_membership[g], \
                     f"Group {g} has {team} as winner but it's not in roster"
+
+    def test_reach_probs_sum_to_slot_counts(self, bundle) -> None:
+        result = run_monte_carlo(bundle, n_iterations=1000, seed=42, progress=False)
+        slots = {"r16": 16, "qf": 8, "sf": 4, "final": 2}
+        for rnd, n_slots in slots.items():
+            total = sum(s["mc_fair_prob"] for s in result["reach"][rnd].values())
+            assert abs(total - n_slots) < 1e-9, f"{rnd} sum: {total}"
+
+    def test_reach_probs_monotone_across_rounds(self, bundle) -> None:
+        result = run_monte_carlo(bundle, n_iterations=1000, seed=42, progress=False)
+        chain = ["r16", "qf", "sf", "final"]
+        for earlier, later in zip(chain, chain[1:]):
+            for team, s in result["reach"][later].items():
+                p_early = result["reach"][earlier].get(team, {}).get("mc_fair_prob", 0.0)
+                assert s["mc_fair_prob"] <= p_early + 1e-9, \
+                    f"{team}: P({later})={s['mc_fair_prob']} > P({earlier})={p_early}"
+        for team, s in result["champion"].items():
+            p_final = result["reach"]["final"].get(team, {}).get("mc_fair_prob", 0.0)
+            assert s["mc_fair_prob"] <= p_final + 1e-9
 
 
 # ── Non-degenerate distribution ──────────────────────────────────────────────

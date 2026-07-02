@@ -68,23 +68,24 @@ def load_log() -> pd.DataFrame:
 
 
 GW_CSV = os.path.join(os.path.dirname(__file__), "..", "data", "mc_simu", "group_winner_log.csv")
+REACH_CSV = os.path.join(os.path.dirname(__file__), "..", "data", "mc_simu", "reach_log.csv")
 
 
 @st.cache_data(ttl=600)
-def load_gw() -> pd.DataFrame:
-    """Group-winner series (model vs Polymarket). Supabase table group_winner_log
+def load_series(table: str, csv_path: str) -> pd.DataFrame:
+    """Model-vs-Polymarket series (group_winner_log / reach_log). Supabase table
     when present, else the local backfill CSV. Empty frame when neither exists —
     the tab degrades to an info box rather than erroring."""
     url, key = _cred("SUPABASE_URL"), _cred("SUPABASE_ANON_KEY")
     df = pd.DataFrame()
     if url and key:
         r = requests.get(
-            f"{url.rstrip('/')}/rest/v1/group_winner_log?select=*&order=date.asc&limit=100000",
+            f"{url.rstrip('/')}/rest/v1/{table}?select=*&order=date.asc&limit=100000",
             headers={"apikey": key, "Authorization": f"Bearer {key}"}, timeout=30)
         if r.status_code == 200:
             df = pd.DataFrame(r.json())
-    if df.empty and os.path.exists(GW_CSV):
-        df = pd.read_csv(GW_CSV)
+    if df.empty and os.path.exists(csv_path):
+        df = pd.read_csv(csv_path)
     if df.empty:
         return df
     df["date"] = pd.to_datetime(df["date"])
@@ -351,10 +352,10 @@ with st.expander("How to read these numbers"):
         "from re-conditioning on played results, never from re-fitting. So a *stable* bias "
         "vs the market is expected and fine — the signal is a *change* in that bias.")
 
-(tab_today, tab_scatter, tab_traj, tab_gw, tab_bracket, tab_score, tab_stab,
- tab_data) = st.tabs(
-    ["Today's edge", "Model vs market", "Trajectories", "Group winner", "Bracket",
-     "Scorecard", "Bias stability", "Data"])
+(tab_today, tab_scatter, tab_traj, tab_gw, tab_reach, tab_bracket, tab_score,
+ tab_stab, tab_data) = st.tabs(
+    ["Today's edge", "Model vs market", "Trajectories", "Group winner",
+     "Knockout rounds", "Bracket", "Scorecard", "Bias stability", "Data"])
 
 
 with tab_today:
@@ -472,7 +473,7 @@ with tab_gw:
                "group stage; after it resolves the series is a closed calibration record. "
                "Kalshi lists no group-winner market and FairLine is snapshot-only, so "
                "Polymarket is the only market line here.")
-    gw = load_gw()
+    gw = load_series("group_winner_log", GW_CSV)
     if gw.empty:
         st.info("No group-winner log yet. Generate it with "
                 "`python -m mc_simu.backfill_group_winner` (writes "
@@ -519,6 +520,54 @@ with tab_gw:
             st.caption("Model re-conditioned per day on real match dates "
                        "(football-data.org); ✕ = Polymarket the same day. A team the model "
                        "has eliminated (0%) while the market still prices it is a live gap.")
+
+
+with tab_reach:
+    st.caption("Who reaches each knockout round — model (solid line) vs Polymarket (✕), "
+               "devigged so each round's quotes sum to its slot count (16 / 8 / 4 / 2). "
+               "'Reach' = win the feeder tie by any route, matching Polymarket's "
+               "'Nation To Reach …' events; Kalshi lists no per-round markets. A round's "
+               "series closes as it resolves — teams lock in at ~100% or 0%.")
+    rc = load_series("reach_log", REACH_CSV)
+    if rc.empty:
+        st.info("No reach log yet. Generate it with `python -m mc_simu.backfill_reach` "
+                "(writes data/mc_simu/reach_log.csv); the daily run keeps it fresh "
+                "once the reach_log table exists in Supabase.")
+    else:
+        ROUND_LABEL = {"r16": "Round of 16", "qf": "Quarter-finals",
+                       "sf": "Semi-finals", "final": "Final"}
+        rounds = [r for r in ("r16", "qf", "sf", "final") if r in set(rc["round"])]
+        rnd = st.selectbox("Round", rounds, index=min(1, len(rounds) - 1),
+                           format_func=lambda r: ROUND_LABEL[r])
+        sub = rc[rc["round"] == rnd]
+        latest = sub[sub["date"] == sub["date"].max()]
+        rank = (latest.assign(k=latest["model_pct"].fillna(0)
+                              + latest["pm_devig_pct"].fillna(0))
+                .sort_values("k", ascending=False))
+        teams_r = st.multiselect("Teams", sorted(sub["team"].unique()),
+                                 default=list(rank["team"].head(8)))
+        fig = go.Figure()
+        palette = px.colors.qualitative.Plotly
+        for i, t in enumerate(teams_r):
+            subt = sub[sub["team"] == t].sort_values("date")
+            c = palette[i % len(palette)]
+            fig.add_scatter(x=subt["date"], y=subt["model_pct"], name=t,
+                            mode="lines+markers", line=dict(color=c, width=2),
+                            connectgaps=False)
+            fig.add_scatter(x=subt["date"], y=subt["pm_devig_pct"], name=f"{t} Poly",
+                            mode="markers", marker=dict(color=c, symbol="x", size=10),
+                            showlegend=False)
+        x0 = pd.Timestamp(rc["date"].min()) - pd.Timedelta(hours=12)
+        x1 = pd.Timestamp(rc["date"].max()) + pd.Timedelta(hours=12)
+        fig.update_layout(template=TPL, height=520, hovermode="x unified",
+                          title=f"Reach {ROUND_LABEL[rnd]} — model (line) vs Polymarket (✕)",
+                          yaxis_title=f"P(reach {ROUND_LABEL[rnd]}) (%)",
+                          xaxis=dict(range=[x0, x1], tickformat="%b %d", dtick=86_400_000))
+        st.plotly_chart(fig, width="stretch")
+        st.caption("Default selection = latest top 8 by model + market. A team the "
+                   "model has eliminated (0%) while the market still prices it is a "
+                   "live gap; once a round resolves its series is a closed "
+                   "calibration record.")
 
 
 with tab_bracket:

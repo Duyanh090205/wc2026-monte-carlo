@@ -58,3 +58,4 @@ Thumbs.db
 # Run logs + internal phase reports — local only
 logs/
 mc_simu/phase0_audit_report.md
+data/mc_simu/reach_log.csv

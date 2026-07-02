@@ -112,6 +112,13 @@ LATER_ROUNDS: list[tuple[int, int, int]] = [
     (104, 101, 102),
 ]
 
+# Round a team ENTERS by winning the feeder match — reach semantics match the
+# Polymarket "Nation To Reach <round>" events (reach r16 = win the R32 tie).
+REACH_ROUND: dict[int, str] = {**{m: "r16" for m in range(89, 97)},
+                               **{m: "qf" for m in range(97, 101)},
+                               101: "sf", 102: "sf", 104: "final"}
+REACH_ROUNDS = ("r16", "qf", "sf", "final")
+
 
 # ── Conditioning (daily rerun): lock played results, re-sim the remainder ─────
 
@@ -288,8 +295,8 @@ def simulate_tournament(
     fifa_ranking: dict[str, float],
     rng: np.random.Generator,
     played: PlayedResults | None = None,
-) -> tuple[str, dict[str, str]]:
-    """One MC iteration. Returns (champion, group_winners_by_letter).
+) -> tuple[str, dict[str, str], dict[int, str]]:
+    """One MC iteration. Returns (champion, group_winners_by_letter, match_winners).
 
     Args:
         group_cdfs_per_group: {group_letter: ndarray shape (6, 81)} — pre-stacked
@@ -377,7 +384,7 @@ def simulate_tournament(
             match_winners[match_id] = sample_knockout_winner(team_a, team_b, p_advance_a, rng)
 
     champion = match_winners[104]
-    return champion, winners
+    return champion, winners, match_winners
 
 
 # ── Pre-build everything needed for the iteration loop ────────────────────────
@@ -478,11 +485,14 @@ def run_monte_carlo(
     predictor: Predictor | None = None,
     played: PlayedResults | None = None,
 ) -> dict[str, Any]:
-    """Run N tournament simulations. Aggregate champion + group-winner frequencies.
+    """Run N tournament simulations. Aggregate champion + group-winner + reach frequencies.
 
-    Returns dict with two keys:
+    Returns dict with three keys:
         'champion':       {team: {'mc_fair_prob': float, 'mc_se': float, 'n_iterations': int}}
         'group_winners':  {group_letter: {team: {'mc_fair_prob', 'mc_se', 'n_iterations'}}}
+        'reach':          {round ('r16'|'qf'|'sf'|'final'): {team: {...same fields}}}
+                          — P(team enters that round); per round the probs sum to
+                          the slot count (16/8/4/2), not to 1.
 
     Args:
         predictor: optional model — see build_sim_context. Default Elo+Poisson+HFA.
@@ -503,8 +513,10 @@ def run_monte_carlo(
         except ImportError:
             pass
 
+    reach_counter: dict[str, dict[str, int]] = {r: defaultdict(int) for r in REACH_ROUNDS}
+
     for _ in iterator:
-        champion, group_winners = simulate_tournament(
+        champion, group_winners, match_winners = simulate_tournament(
             group_cdfs_per_group=sim.group_cdfs_per_group,
             group_team_pairs=sim.group_team_pairs,
             r32_table=sim.r32_table,
@@ -516,6 +528,10 @@ def run_monte_carlo(
         champion_counter[champion] += 1
         for g, w in group_winners.items():
             group_winner_counter[g][w] += 1
+        for mid, left, right in LATER_ROUNDS:
+            rnd = REACH_ROUND[mid]
+            reach_counter[rnd][match_winners[left]] += 1
+            reach_counter[rnd][match_winners[right]] += 1
 
     def to_results(counter: dict[str, int], n: int) -> dict[str, dict[str, float | int]]:
         out: dict[str, dict[str, float | int]] = {}
@@ -532,5 +548,8 @@ def run_monte_carlo(
         "champion": to_results(champion_counter, n_iterations),
         "group_winners": {
             g: to_results(group_winner_counter[g], n_iterations) for g in GROUP_LETTERS
+        },
+        "reach": {
+            rnd: to_results(reach_counter[rnd], n_iterations) for rnd in REACH_ROUNDS
         },
     }
