@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
-from mc_simu.run_daily import export_match_predictions
-from mc_simu.tournaments.wc2026 import PlayedResults
+from mc_simu.run_daily import DATA, export_match_predictions
+from mc_simu.tournaments.wc2026 import PlayedResults, load_played_results
 
 
 def test_unconditioned_export_has_72_group_rows(tmp_path) -> None:
@@ -34,3 +35,19 @@ def test_played_result_merged_into_row(tmp_path) -> None:
     assert goals == {"Mexico": 2, "South Africa": 1}
     others = df[~mask]
     assert others["home_goals"].isna().all()
+
+
+def test_ko_rows_carry_modal_score(tmp_path) -> None:
+    played_csv = DATA / "wc2026_played.csv"
+    if not played_csv.exists():
+        pytest.skip("no played results file")
+    played = load_played_results(played_csv)
+    out = tmp_path / "pred.csv"
+    export_match_predictions(played, out)
+    df = pd.read_csv(out)
+    ko = df[df["stage"] != "group"]
+    if ko.empty:
+        pytest.skip("no KO pairings resolved yet")
+    assert ko["score_pred"].str.fullmatch(r"\d-\d").all()
+    assert ((ko["score_prob"] > 0) & (ko["score_prob"] < 0.5)).all()
+    assert ((ko["p_home"] + ko["p_away"] - 1).abs() < 0.01).all()

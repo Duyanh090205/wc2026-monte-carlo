@@ -121,7 +121,7 @@ def prob_bar(p_home: float, p_draw: float, p_away: float) -> str:
             f'<div style="width:{p_away * 100:.0f}%;background:{DOWN_C}"></div></div>')
 
 
-def bracket_figure(ko: pd.DataFrame) -> go.Figure:
+def bracket_figure(ko: pd.DataFrame, score_col: str = "score_pred") -> go.Figure:
     """Fixed FIFA bracket tree; boxes fill in from the predictions CSV as the
     tournament resolves. Drawn from the same constants the simulator uses."""
     children = {mid: (left, right) for mid, left, right in KO_ROUNDS}
@@ -173,9 +173,20 @@ def bracket_figure(ko: pd.DataFrame) -> go.Figure:
                 la = f"<b><span style='color:{UP_C}'>{la} ✓</span></b>"
             elif w == b:
                 lb = f"<b><span style='color:{UP_C}'>{lb} ✓</span></b>"
+            sp = row.get(score_col)
+            sp = sp if isinstance(sp, str) and sp else None
+            sp_prob = row.get("score_prob") if score_col == "score_pred" else None
+            sp_txt = ""
+            if sp:
+                sp_txt = f" · likely {sp} (90')"
+                if sp_prob is not None and pd.notna(sp_prob):
+                    sp_txt = f" · likely {sp} ({float(sp_prob) * 100:.0f}%, 90')"
             text, border = la + "<br>" + lb, "rgba(127,127,127,0.55)"
+            if sp:
+                text += (f"<br><i><span style='color:rgba(127,127,127,0.9)'>"
+                         f"likely {sp}</span></i>")
             hover_t.append(f"M{mid}: {a} {row['p_home'] * 100:.0f}% — "
-                           f"{b} {row['p_away'] * 100:.0f}%"
+                           f"{b} {row['p_away'] * 100:.0f}%{sp_txt}"
                            + (f" · advanced: {w}" if w else ""))
         else:
             if mid in slots:
@@ -201,7 +212,7 @@ def bracket_figure(ko: pd.DataFrame) -> go.Figure:
     if final_row is not None and isinstance(final_row["winner"], str) and final_row["winner"]:
         fig.add_annotation(x=4, y=ynode(104) - 1.4, showarrow=False, font=dict(size=13),
                            text=f"🏆 <b>{final_row['winner']}</b>")
-    fig.update_layout(template=TPL, height=740, margin=dict(l=10, r=10, t=40, b=10),
+    fig.update_layout(template=TPL, height=860, margin=dict(l=10, r=10, t=40, b=10),
                       xaxis=dict(tickvals=[0, 1, 2, 3, 4],
                                  ticktext=["Round of 32", "Round of 16", "Quarter-finals",
                                            "Semi-finals", "Final"],
@@ -520,7 +531,10 @@ with tab_bracket:
                 "*Group E winner*, *Group A runner-up*, *best 3rd place*, *M73 winner* — and "
                 "shows the real teams once they're known.\n"
                 "- **Advance %** — the model's chance to win that tie by any route (normal "
-                "time, extra time or penalties). A green name with ✓ actually went through.\n"
+                "time, extra time or penalties). A green name with ✓ actually went through. "
+                "Under each decided pairing: the model's most likely **90-minute score** "
+                "(hover shows its probability) — extra time and penalties are excluded, so "
+                "a 1-1 there means the tie most likely goes past 90 minutes.\n"
                 "- **Model lean** — on each group match, the most likely of win / draw / win, "
                 "with its probability; the bar shows the full split (🟩 left team · ⬜ draw · "
                 "🟥 right team). Locked pre-tournament, never changes.\n"
@@ -534,11 +548,17 @@ with tab_bracket:
                 "the model prices. Even the top pick rarely beats ~13%, so most miss by "
                 "design; 🎯 marks an exact hit.")
 
+        score_col = ("score_pred_mle"
+                     if model_src == "MLE strength" and "score_pred_mle" in mp.columns
+                     and mp["score_pred_mle"].notna().any()
+                     else "score_pred")
         st.subheader("Knockout bracket")
-        st.caption("Each box: the two sides with the model's % chance to advance; ✓ marks who "
-                   "went through. Hover for full team names. The 3rd-place play-off is not "
+        st.caption("Each box: the two sides with the model's % chance to advance and its most "
+                   "likely 90-minute score; ✓ marks who went through. Hover for full team "
+                   "names and the score's probability. The 3rd-place play-off is not "
                    "simulated (v1 scope).")
-        st.plotly_chart(bracket_figure(mp[mp["stage"] != "group"]), width="stretch")
+        st.plotly_chart(bracket_figure(mp[mp["stage"] != "group"], score_col),
+                        width="stretch")
 
         st.subheader("Group stage")
         st.caption("Each match shows the model's lean — the most likely of win / draw / win "
@@ -547,10 +567,6 @@ with tab_bracket:
                    "✗ held to a draw (favourite only drew), or ✗ upset (the other side won) "
                    "— and 🎯 if it nailed the exact score.")
         groups = mp[mp["stage"] == "group"]
-        score_col = ("score_pred_mle"
-                     if model_src == "MLE strength" and "score_pred_mle" in groups.columns
-                     and groups["score_pred_mle"].notna().any()
-                     else "score_pred")
         grid = st.columns(3)
         for i, g in enumerate(sorted(groups["group"].unique())):
             col = grid[i % 3]

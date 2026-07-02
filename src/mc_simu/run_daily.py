@@ -157,6 +157,11 @@ PRED_COLS = ["stage", "group", "match_id", "home_team", "away_team",
              "home_goals", "away_goals", "winner"]
 
 
+def _modal_from_grid(grid: np.ndarray) -> tuple[str, float]:
+    h, a = np.unravel_index(int(grid.argmax()), grid.shape)
+    return f"{h}-{a}", round(float(grid[h, a]), 4)
+
+
 def _wdl_from_cdf(cdfs, i) -> tuple[float, float, float]:
     grid = np.diff(np.concatenate([[0.0], cdfs[i]])).reshape(9, 9)
     return (round(float(np.tril(grid, -1).sum()), 4),
@@ -165,29 +170,35 @@ def _wdl_from_cdf(cdfs, i) -> tuple[float, float, float]:
 
 
 def _modal_score(cdfs, i) -> tuple[str, float]:
-    grid = np.diff(np.concatenate([[0.0], cdfs[i]])).reshape(9, 9)
-    h, a = np.unravel_index(int(grid.argmax()), grid.shape)
-    return f"{h}-{a}", round(float(grid[h, a]), 4)
+    return _modal_from_grid(np.diff(np.concatenate([[0.0], cdfs[i]])).reshape(9, 9))
 
 
 def export_match_predictions(played, out_csv: Path) -> int:
     """Per-match view + results for the dashboard bracket tab, both sources.
 
     Group W/D/L probs are static (locked models, known fixtures). KO rows appear
-    as the bracket resolves from played results; p_home = advance probability.
+    as the bracket resolves from played results; p_home = advance probability,
+    score_pred = the modal 90-minute score (extra time / penalties excluded).
     p_*_mle columns carry the parallel mle_strength source over the same bundle.
     """
+    from mc_simu.simulator import _build_ko_match_context, make_elo_predictor
+
     sg.ELO_GOALS_DENOMINATOR = 1400.0
     bundle = load_wc2026_bundle(production_ratings(), params=ModelParams(diagonal_inflation=0.20))
-    sim = build_sim_context(bundle)
+    predictor = make_elo_predictor(bundle.params)
+    sim = build_sim_context(bundle, predictor=predictor)
     try:
         from mc_simu.strength_mle import load_strengths_artifact, make_mle_predictor
-        sim_mle = build_sim_context(
-            bundle, predictor=make_mle_predictor(load_strengths_artifact(STRENGTH_ARTIFACT)))
+        mle_predictor = make_mle_predictor(load_strengths_artifact(STRENGTH_ARTIFACT))
+        sim_mle = build_sim_context(bundle, predictor=mle_predictor)
     except Exception as e:
         print(f"export: mle_strength source unavailable (production columns "
               f"unaffected, mle columns blank): {e}")
-        sim_mle = None
+        sim_mle = mle_predictor = None
+
+    def ko_modal(pred_fn, a: str, b: str) -> tuple[str, float]:
+        ctx = _build_ko_match_context(a, b, bundle.host)
+        return _modal_from_grid(pred_fn(bundle.ratings[a], bundle.ratings[b], ctx).goal_grid)
 
     rows = []
     for g in sorted(sim.group_team_pairs):
@@ -222,6 +233,8 @@ def export_match_predictions(played, out_csv: Path) -> int:
         a, b = sorted(known[mid])
         adv = sim.ko_advance[(a, b)]
         adv_m = sim_mle.ko_advance[(a, b)] if sim_mle is not None else None
+        score, score_p = ko_modal(predictor, a, b)
+        score_m = ko_modal(mle_predictor, a, b)[0] if sim_mle is not None else ""
         rows.append({
             "stage": KO_STAGE[mid], "group": "", "match_id": mid,
             "home_team": a, "away_team": b,
@@ -230,7 +243,7 @@ def export_match_predictions(played, out_csv: Path) -> int:
             "p_home_mle": round(adv_m, 4) if adv_m is not None else "",
             "p_draw_mle": "",
             "p_away_mle": round(1 - adv_m, 4) if adv_m is not None else "",
-            "score_pred": "", "score_prob": "", "score_pred_mle": "",
+            "score_pred": score, "score_prob": score_p, "score_pred_mle": score_m,
             "home_goals": "", "away_goals": "",
             "winner": played.ko_winners.get(mid, ""),
         })
