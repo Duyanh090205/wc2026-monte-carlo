@@ -1,0 +1,37 @@
+name: seed-reach
+
+# One-off maintenance: rebuild the reach series from git as-of states and seed
+# the Supabase reach_log table. Dispatch manually after running the
+# deploy/supabase_schema.sql migration; safe to re-run (clean-replace upsert).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # backfill replays git history of wc2026_played.csv
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install "numpy==2.4.*" "scipy==1.17.*" "pandas==3.0.*" "requests==2.34.*"
+      - name: Backfill reach series (model per git state + Polymarket CLOB history)
+        run: PYTHONPATH=src python -m mc_simu.backfill_reach --n 50000 | tee run.log
+      - name: Seed Supabase reach_log
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: PYTHONPATH=src python -m mc_simu.seed_reach | tee -a run.log
+      - name: Job summary
+        if: always()
+        run: |
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tail -30 run.log >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
