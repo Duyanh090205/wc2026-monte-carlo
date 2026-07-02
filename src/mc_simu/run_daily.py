@@ -154,7 +154,8 @@ PRED_COLS = ["stage", "group", "match_id", "home_team", "away_team",
              "p_home", "p_draw", "p_away",
              "p_home_mle", "p_draw_mle", "p_away_mle",
              "score_pred", "score_prob", "score_pred_mle",
-             "home_goals", "away_goals", "winner"]
+             "home_goals", "away_goals", "duration", "pen_home", "pen_away",
+             "winner"]
 
 
 def _modal_from_grid(grid: np.ndarray) -> tuple[str, float]:
@@ -220,6 +221,7 @@ def export_match_predictions(played, out_csv: Path) -> int:
                 "score_pred": score, "score_prob": score_p, "score_pred_mle": score_m,
                 "home_goals": real[h] if real else "",
                 "away_goals": real[a] if real else "",
+                "duration": "", "pen_home": "", "pen_away": "",
                 "winner": "",
             })
 
@@ -235,6 +237,8 @@ def export_match_predictions(played, out_csv: Path) -> int:
         adv_m = sim_mle.ko_advance[(a, b)] if sim_mle is not None else None
         score, score_p = ko_modal(predictor, a, b)
         score_m = ko_modal(mle_predictor, a, b)[0] if sim_mle is not None else ""
+        ks = played.ko_scores.get(mid)
+        pens = ks["pens"] if ks else None
         rows.append({
             "stage": KO_STAGE[mid], "group": "", "match_id": mid,
             "home_team": a, "away_team": b,
@@ -244,7 +248,11 @@ def export_match_predictions(played, out_csv: Path) -> int:
             "p_draw_mle": "",
             "p_away_mle": round(1 - adv_m, 4) if adv_m is not None else "",
             "score_pred": score, "score_prob": score_p, "score_pred_mle": score_m,
-            "home_goals": "", "away_goals": "",
+            "home_goals": ks["goals"].get(a, "") if ks else "",
+            "away_goals": ks["goals"].get(b, "") if ks else "",
+            "duration": ks["duration"] if ks else "",
+            "pen_home": pens.get(a, "") if pens else "",
+            "pen_away": pens.get(b, "") if pens else "",
             "winner": played.ko_winners.get(mid, ""),
         })
 

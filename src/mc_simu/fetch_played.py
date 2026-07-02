@@ -39,7 +39,8 @@ from mc_simu.tournaments.wc2026 import (  # noqa: E402
 DATA = PROJECT_ROOT / "data" / "mc_simu"
 API_URL = "https://api.football-data.org/v4/competitions/WC/matches"
 CSV_COLS = ["stage", "match_id", "home_team", "away_team",
-            "home_goals", "away_goals", "winner"]
+            "home_goals", "away_goals", "duration", "pen_home", "pen_away",
+            "winner"]
 
 # football-data.org name -> wc2026_groups.json name. Keys are pre-normalized
 # (lowercase, diacritics stripped) — extend here when the warning log surfaces
@@ -136,6 +137,28 @@ def fetch_finished(token: str) -> list[dict]:
     resp.raise_for_status()
     return [m for m in resp.json().get("matches", [])
             if m.get("status") == "FINISHED"]
+
+
+def ko_match_goals(score: dict) -> tuple[int, int]:
+    """Final match goals — extra time included, shootout goals excluded.
+
+    football-data.org v4 folds penalty-shootout goals into fullTime for
+    PENALTY_SHOOTOUT matches; recover the real score from regularTime +
+    extraTime when present, else back the shootout out of fullTime.
+    """
+    ft = score.get("fullTime") or {}
+    hg, ag = int(ft["home"]), int(ft["away"])
+    if score.get("duration") != "PENALTY_SHOOTOUT":
+        return hg, ag
+    reg, ext = score.get("regularTime") or {}, score.get("extraTime") or {}
+    parts = (reg.get("home"), reg.get("away"), ext.get("home"), ext.get("away"))
+    if all(v is not None for v in parts):
+        return int(reg["home"]) + int(ext["home"]), int(reg["away"]) + int(ext["away"])
+    pens = score.get("penalties") or {}
+    ph, pa = pens.get("home"), pens.get("away")
+    if ph is not None and pa is not None and hg - int(ph) >= 0 and ag - int(pa) >= 0:
+        return hg - int(ph), ag - int(pa)
+    return hg, ag
 
 
 def ko_winner(match: dict, home: str, away: str) -> str | None:
@@ -319,7 +342,8 @@ def main(argv: list[str] | None = None) -> int:
             group_scores[frozenset((home, away))] = {home: int(hg), away: int(ag)}
             fetched.append({"stage": "group", "match_id": "", "home_team": home,
                             "away_team": away, "home_goals": str(int(hg)),
-                            "away_goals": str(int(ag)), "winner": ""})
+                            "away_goals": str(int(ag)), "duration": "",
+                            "pen_home": "", "pen_away": "", "winner": ""})
         else:
             ko_api.append((frozenset((home, away)), m, home, away))
 
@@ -344,11 +368,18 @@ def main(argv: list[str] | None = None) -> int:
         if w is None:
             print(f"fetch_played: WARNING no winner for KO match {mid} {set(pair)} -- skipped")
             continue
-        ft = (m.get("score") or {}).get("fullTime") or {}
+        score = m.get("score") or {}
+        hg, ag = ko_match_goals(score)
+        pens = score.get("penalties") or {}
+        ph, pa = pens.get("home"), pens.get("away")
         ko_locked[mid] = w
         fetched.append({"stage": "ko", "match_id": str(mid), "home_team": home,
-                        "away_team": away, "home_goals": str(int(ft["home"])),
-                        "away_goals": str(int(ft["away"])), "winner": w})
+                        "away_team": away, "home_goals": str(hg),
+                        "away_goals": str(ag),
+                        "duration": str(score.get("duration") or "REGULAR"),
+                        "pen_home": "" if ph is None else str(int(ph)),
+                        "pen_away": "" if pa is None else str(int(pa)),
+                        "winner": w})
 
     rows, n_changed = merge_rows(existing, fetched)
     n_group = sum(1 for r in rows if r["stage"] == "group")
@@ -382,6 +413,7 @@ __all__ = [
     "group_fixture_issue",
     "ko_winner",
     "load_existing_rows",
+    "ko_match_goals",
     "load_tournament_window",
     "merge_rows",
     "plausible_score",

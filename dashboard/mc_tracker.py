@@ -181,12 +181,31 @@ def bracket_figure(ko: pd.DataFrame, score_col: str = "score_pred") -> go.Figure
                 sp_txt = f" · likely {sp} (90')"
                 if sp_prob is not None and pd.notna(sp_prob):
                     sp_txt = f" · likely {sp} ({float(sp_prob) * 100:.0f}%, 90')"
+            hg, ag = row.get("home_goals"), row.get("away_goals")
+            final_line = final_txt = ""
+            if pd.notna(hg) and str(hg) != "":
+                dur = row.get("duration")
+                dur = dur if isinstance(dur, str) else ""
+                if dur == "EXTRA_TIME":
+                    note = " a.e.t."
+                elif dur == "PENALTY_SHOOTOUT":
+                    ph_, pa_ = row.get("pen_home"), row.get("pen_away")
+                    note = (f" pens {int(ph_)}–{int(pa_)}"
+                            if pd.notna(ph_) and pd.notna(pa_) else " pens")
+                else:
+                    note = ""
+                actual = f"{int(hg)}–{int(ag)}"
+                nailed = bool(sp) and dur == "REGULAR" and sp == f"{int(hg)}-{int(ag)}"
+                final_line = f"<b>{actual}</b>{note}" + (" 🎯" if nailed else "")
+                final_txt = f" · final {actual}{note}" + (" · nailed 🎯" if nailed else "")
             text, border = la + "<br>" + lb, "rgba(127,127,127,0.55)"
-            if sp:
+            if final_line:
+                text += f"<br>{final_line}"
+            elif sp:
                 text += (f"<br><i><span style='color:rgba(127,127,127,0.9)'>"
                          f"likely {sp}</span></i>")
             hover_t.append(f"M{mid}: {a} {row['p_home'] * 100:.0f}% — "
-                           f"{b} {row['p_away'] * 100:.0f}%{sp_txt}"
+                           f"{b} {row['p_away'] * 100:.0f}%{sp_txt}{final_txt}"
                            + (f" · advanced: {w}" if w else ""))
         else:
             if mid in slots:
@@ -532,9 +551,15 @@ with tab_bracket:
                 "shows the real teams once they're known.\n"
                 "- **Advance %** — the model's chance to win that tie by any route (normal "
                 "time, extra time or penalties). A green name with ✓ actually went through. "
-                "Under each decided pairing: the model's most likely **90-minute score** "
+                "Under an undecided pairing: the model's most likely **90-minute score** "
                 "(hover shows its probability) — extra time and penalties are excluded, so "
                 "a 1-1 there means the tie most likely goes past 90 minutes.\n"
+                "- **Final score** — once played, the box shows the real score in bold, "
+                "with *a.e.t.* or *pens x–y* when the tie went past 90 minutes (the score "
+                "itself excludes shootout goals). 🎯 marks an exact scoreline hit and is "
+                "only awarded on matches decided inside 90 minutes — the model's score "
+                "prediction is a 90-minute call. Hover keeps the model's *likely* score "
+                "for comparison.\n"
                 "- **Model lean** — on each group match, the most likely of win / draw / win, "
                 "with its probability; the bar shows the full split (🟩 left team · ⬜ draw · "
                 "🟥 right team). Locked pre-tournament, never changes.\n"

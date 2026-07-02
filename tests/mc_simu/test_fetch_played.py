@@ -15,6 +15,7 @@ from mc_simu.fetch_played import (
     canonical_team,
     find_ko_match_id,
     group_fixture_issue,
+    ko_match_goals,
     ko_winner,
     load_tournament_window,
     merge_rows,
@@ -71,6 +72,34 @@ class TestKoWinner:
 
     def test_no_winner_no_penalties(self) -> None:
         assert ko_winner({"score": {"winner": "DRAW"}}, "A", "B") is None
+
+
+class TestKoMatchGoals:
+    def test_regular_time_passthrough(self) -> None:
+        score = {"duration": "REGULAR", "fullTime": {"home": 2, "away": 1}}
+        assert ko_match_goals(score) == (2, 1)
+
+    def test_extra_time_fulltime_kept(self) -> None:
+        score = {"duration": "EXTRA_TIME", "fullTime": {"home": 3, "away": 2}}
+        assert ko_match_goals(score) == (3, 2)
+
+    def test_shootout_recovered_from_regular_plus_extra(self) -> None:
+        score = {"duration": "PENALTY_SHOOTOUT",
+                 "fullTime": {"home": 5, "away": 4},
+                 "regularTime": {"home": 1, "away": 1},
+                 "extraTime": {"home": 0, "away": 0},
+                 "penalties": {"home": 4, "away": 3}}
+        assert ko_match_goals(score) == (1, 1)
+
+    def test_shootout_fallback_subtracts_penalties(self) -> None:
+        score = {"duration": "PENALTY_SHOOTOUT",
+                 "fullTime": {"home": 5, "away": 4},
+                 "penalties": {"home": 4, "away": 3}}
+        assert ko_match_goals(score) == (1, 1)
+
+    def test_shootout_without_breakdown_keeps_fulltime(self) -> None:
+        score = {"duration": "PENALTY_SHOOTOUT", "fullTime": {"home": 2, "away": 2}}
+        assert ko_match_goals(score) == (2, 2)
 
 
 # ── R32 bracket resolution from group results ─────────────────────────────────
@@ -191,7 +220,8 @@ class TestFindKoMatchId:
 class TestMergeRows:
     GROUP_ROW = {"stage": "group", "match_id": "", "home_team": "Mexico",
                  "away_team": "South Africa", "home_goals": "2",
-                 "away_goals": "1", "winner": ""}
+                 "away_goals": "1", "duration": "", "pen_home": "",
+                 "pen_away": "", "winner": ""}
 
     def test_upsert_overwrites_same_key(self) -> None:
         stale = dict(self.GROUP_ROW, home_goals="0")

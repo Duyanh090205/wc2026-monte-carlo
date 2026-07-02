@@ -126,10 +126,16 @@ class PlayedResults:
 
     group_scores: {frozenset({home, away}): {team: goals}} — orientation-agnostic.
     ko_winners:   {fixture_match_id (73-104): winner_team}.
+    ko_scores:    {match_id: {"goals": {team: goals}, "duration":
+                  ""|"REGULAR"|"EXTRA_TIME"|"PENALTY_SHOOTOUT",
+                  "pens": {team: pens} | None}} — display-only (dashboard);
+                  the sim conditions on ko_winners alone. Goals exclude the
+                  shootout; "" duration = legacy row, ET status unknown.
     """
 
     group_scores: dict[frozenset, dict[str, int]] = field(default_factory=dict)
     ko_winners: dict[int, str] = field(default_factory=dict)
+    ko_scores: dict[int, dict] = field(default_factory=dict)
 
 
 def load_played_results(csv_path: Path) -> PlayedResults:
@@ -150,7 +156,19 @@ def load_played_results(csv_path: Path) -> PlayedResults:
             w = r.get("winner")
             if w is None or (isinstance(w, float) and pd.isna(w)):
                 w = r["home_team"] if r["home_goals"] > r["away_goals"] else r["away_team"]
-            pr.ko_winners[int(r["match_id"])] = str(w)
+            mid = int(r["match_id"])
+            pr.ko_winners[mid] = str(w)
+            hg, ag = r.get("home_goals"), r.get("away_goals")
+            if pd.notna(hg) and pd.notna(ag):
+                h, a = r["home_team"], r["away_team"]
+                dur = r.get("duration")
+                ph, pa = r.get("pen_home"), r.get("pen_away")
+                pr.ko_scores[mid] = {
+                    "goals": {h: int(hg), a: int(ag)},
+                    "duration": str(dur) if pd.notna(dur) else "",
+                    "pens": ({h: int(ph), a: int(pa)}
+                             if pd.notna(ph) and pd.notna(pa) else None),
+                }
     return pr
 
 
