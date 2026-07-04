@@ -394,7 +394,9 @@ def log_group_winner(res: dict, date: str, played) -> int:
         s = sum(pm_raw.values())
         pm_dv = {t: v / s for t, v in pm_raw.items()} if s > 0 else {}
         for t in teams:
-            if t not in mdl and t not in pm_raw:
+            # mdl omits teams with zero group-winning iterations (eliminated) —
+            # keep their explicit 0 row so the series has no per-team gaps
+            if not mdl and t not in pm_raw:
                 continue
             rows.append({
                 "date": date, "group": g, "team": t,
@@ -470,11 +472,12 @@ def log_reach(res: dict, date: str, played) -> int:
         pm_dv = ({t: min(1.0, v * slots / s) for t, v in pm_raw.items()}
                  if s >= slots * 0.5 else {})
         for t in teams48:
-            if t not in mdl and t not in pm_raw:
+            # same eliminated-team rule as log_group_winner
+            if not mdl and t not in pm_raw:
                 continue
             rows.append({
                 "date": date, "round": rnd, "team": t,
-                "model_pct": round(mdl.get(t, 0.0) * 100, 3),
+                "model_pct": round(mdl.get(t, 0.0) * 100, 3) if mdl else None,
                 "model_state_matches": state,
                 "pm_raw_pct": round(pm_raw[t] * 100, 3) if t in pm_raw else None,
                 "pm_devig_pct": round(pm_dv[t] * 100, 3) if t in pm_dv else None,

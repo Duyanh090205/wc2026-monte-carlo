@@ -176,7 +176,9 @@ def build_rows(model: dict, poly: dict, teams48: list[str]) -> list[dict]:
             pm_dv = _devig_slots(pm_raw, REACH_SLOTS[rnd])
             order = sorted(teams48, key=lambda t: -(mdl.get(t) or pm_dv.get(t) or 0))
             for t in order:
-                if t not in mdl and t not in pm_raw:
+                # mdl only lists teams that reached the round in >=1 iteration,
+                # so absence under a non-empty mdl means eliminated -> 0 row
+                if not mdl and t not in pm_raw:
                     continue
                 rows.append({
                     "date": d, "round": rnd, "team": t,

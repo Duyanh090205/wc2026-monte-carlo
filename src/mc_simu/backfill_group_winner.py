@@ -255,7 +255,9 @@ def build_rows(model: dict, poly: dict, groups: dict[str, list[str]]) -> list[di
             pm_dv = _devig(pm_raw)
             order = sorted(teams, key=lambda t: -(mdl.get(t) or pm_dv.get(t) or 0))
             for t in order:
-                if t not in mdl and t not in pm_raw:
+                # mdl only lists teams with >=1 group win in the MC counter, so
+                # absence under a non-empty mdl means eliminated -> explicit 0 row
+                if not mdl and t not in pm_raw:
                     continue
                 rows.append({
                     "date": d, "group": g, "team": t,
