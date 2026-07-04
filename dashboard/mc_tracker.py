@@ -41,15 +41,29 @@ def _cred(name):
 LOCAL_CSV = os.path.join(os.path.dirname(__file__), "..", "data", "mc_simu", "daily_log.csv")
 
 
+def fetch_table(url: str, key: str, table: str, order: str,
+                page: int = 1000) -> pd.DataFrame:
+    """PostgREST caps every response at max-rows (default 1000) no matter the
+    limit= — page by offset until a short page. order must be a total order
+    (include the primary key) so pages don't overlap."""
+    rows: list = []
+    while True:
+        r = requests.get(
+            f"{url.rstrip('/')}/rest/v1/{table}?select=*&order={order}"
+            f"&limit={page}&offset={len(rows)}",
+            headers={"apikey": key, "Authorization": f"Bearer {key}"}, timeout=30)
+        r.raise_for_status()
+        batch = r.json()
+        rows.extend(batch)
+        if len(batch) < page:
+            return pd.DataFrame(rows)
+
+
 @st.cache_data(ttl=600)
 def load_log() -> pd.DataFrame:
     url, key = _cred("SUPABASE_URL"), _cred("SUPABASE_ANON_KEY")
     if url and key:
-        r = requests.get(
-            f"{url.rstrip('/')}/rest/v1/daily_log?select=*&order=date.asc&limit=100000",
-            headers={"apikey": key, "Authorization": f"Bearer {key}"}, timeout=30)
-        r.raise_for_status()
-        df = pd.DataFrame(r.json())
+        df = fetch_table(url, key, "daily_log", "date.asc,team.asc")
     elif os.path.exists(LOCAL_CSV):
         df = pd.read_csv(LOCAL_CSV)
     else:
@@ -71,6 +85,10 @@ GW_CSV = os.path.join(os.path.dirname(__file__), "..", "data", "mc_simu", "group
 REACH_CSV = os.path.join(os.path.dirname(__file__), "..", "data", "mc_simu", "reach_log.csv")
 
 
+SERIES_ORDER = {"group_winner_log": "date.asc,group.asc,team.asc",
+                "reach_log": "date.asc,round.asc,team.asc"}
+
+
 @st.cache_data(ttl=600)
 def load_series(table: str, csv_path: str) -> pd.DataFrame:
     """Model-vs-Polymarket series (group_winner_log / reach_log). Supabase table
@@ -79,11 +97,10 @@ def load_series(table: str, csv_path: str) -> pd.DataFrame:
     url, key = _cred("SUPABASE_URL"), _cred("SUPABASE_ANON_KEY")
     df = pd.DataFrame()
     if url and key:
-        r = requests.get(
-            f"{url.rstrip('/')}/rest/v1/{table}?select=*&order=date.asc&limit=100000",
-            headers={"apikey": key, "Authorization": f"Bearer {key}"}, timeout=30)
-        if r.status_code == 200:
-            df = pd.DataFrame(r.json())
+        try:
+            df = fetch_table(url, key, table, SERIES_ORDER[table])
+        except requests.RequestException:
+            df = pd.DataFrame()
     if df.empty and os.path.exists(csv_path):
         df = pd.read_csv(csv_path)
     if df.empty:
