@@ -24,7 +24,7 @@ DATA = PROJECT_ROOT / "data" / "mc_simu"
 def main() -> int:
     import requests
 
-    from mc_simu.seed_group_winner import _row
+    from mc_simu.seed_group_winner import _row, merge_existing
 
     url = os.environ.get("SUPABASE_URL")
     key = os.environ.get("SUPABASE_SERVICE_KEY")
@@ -38,11 +38,12 @@ def main() -> int:
         return 2
     with csv_path.open(newline="", encoding="utf-8") as f:
         rows = [_row(r) for r in csv.DictReader(f)]
-    dates = sorted({r["date"] for r in rows})
-    print(f"Upserting {len(rows)} rows to reach_log ({dates[0]}..{dates[-1]}) ...")
 
     base = f"{url.rstrip('/')}/rest/v1/reach_log"
     auth = {"apikey": key, "Authorization": f"Bearer {key}"}
+    rows = merge_existing(rows, base, auth, ("date", "round", "team"))
+    dates = sorted({r["date"] for r in rows})
+    print(f"Upserting {len(rows)} rows to reach_log ({dates[0]}..{dates[-1]}) ...")
     # Clean-replace the backfilled window first (see seed_group_winner).
     dele = requests.delete(
         f"{base}?date=gte.{dates[0]}&date=lte.{dates[-1]}",

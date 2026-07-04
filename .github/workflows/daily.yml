@@ -17,6 +17,11 @@ jobs:
   run:
     runs-on: ubuntu-latest
     timeout-minutes: 45   # two 1M-sim MC runs (production + mle) ≈ 16 min + overhead
+    defaults:
+      run:
+        # default bash -e has no pipefail: `python ... | tee` reported success on
+        # 2026-06-29 while run_daily died instantly, silently losing the day
+        shell: bash -e -o pipefail {0}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6

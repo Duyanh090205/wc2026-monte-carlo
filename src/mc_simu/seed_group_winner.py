@@ -38,6 +38,47 @@ def _row(r: dict) -> dict:
     return out
 
 
+def _fetch_existing(base: str, auth: dict, page: int = 1000) -> list[dict]:
+    import requests
+    rows: list[dict] = []
+    while True:
+        r = requests.get(f"{base}?select=*&limit={page}&offset={len(rows)}",
+                         headers=auth, timeout=30)
+        r.raise_for_status()
+        batch = r.json()
+        rows.extend(batch)
+        if len(batch) < page:
+            return rows
+
+
+def merge_existing(rows: list[dict], base: str, auth: dict,
+                   keycols: tuple[str, ...]) -> list[dict]:
+    """Union the regenerated rows with what the table already holds.
+
+    The daily live path logs lastTradePrice on days where CLOB prices-history
+    is silent (a clinched market prints no daily closes until it resolves), so
+    a regenerated backfill is missing those points. Keep any existing cell or
+    row the regen would blank; freshly computed values still win.
+    """
+    existing = {tuple(r[c] for c in keycols): r for r in _fetch_existing(base, auth)}
+    merged, seen = [], set()
+    for r in rows:
+        k = tuple(r[c] for c in keycols)
+        seen.add(k)
+        old = existing.get(k)
+        if old:
+            for col in ("model_pct", "model_state_matches",
+                        "pm_raw_pct", "pm_devig_pct"):
+                if r.get(col) is None and old.get(col) is not None:
+                    r[col] = old[col]
+        merged.append(r)
+    for k, old in existing.items():
+        if k not in seen:
+            old.pop("inserted_at", None)
+            merged.append(old)
+    return merged
+
+
 def main() -> int:
     import requests
 
@@ -53,11 +94,12 @@ def main() -> int:
         return 2
     with csv_path.open(newline="", encoding="utf-8") as f:
         rows = [_row(r) for r in csv.DictReader(f)]
-    dates = sorted({r["date"] for r in rows})
-    print(f"Upserting {len(rows)} rows to group_winner_log ({dates[0]}..{dates[-1]}) ...")
 
     base = f"{url.rstrip('/')}/rest/v1/group_winner_log"
     auth = {"apikey": key, "Authorization": f"Bearer {key}"}
+    rows = merge_existing(rows, base, auth, ("date", "group", "team"))
+    dates = sorted({r["date"] for r in rows})
+    print(f"Upserting {len(rows)} rows to group_winner_log ({dates[0]}..{dates[-1]}) ...")
     # Clean-replace the backfilled window first, so rows dropped by a fixed
     # regenerate (e.g. resolved-group Poly garbage) don't linger from a prior seed.
     dele = requests.delete(
@@ -78,7 +120,7 @@ def main() -> int:
     return 0
 
 
-__all__ = ["main"]
+__all__ = ["merge_existing", "main"]
 
 
 if __name__ == "__main__":

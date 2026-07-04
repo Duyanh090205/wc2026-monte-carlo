@@ -1,8 +1,10 @@
-name: seed-reach
+name: seed-group-winner
 
-# One-off maintenance: rebuild the reach series from git as-of states and seed
-# the Supabase reach_log table. Dispatch manually after running the
-# deploy/supabase_schema.sql migration; safe to re-run (clean-replace upsert).
+# One-off maintenance: rebuild the group-winner series from git as-of states and
+# seed the Supabase group_winner_log table. Dispatch manually; safe to re-run —
+# the seed merges with existing rows first, so live-captured Polymarket points
+# (days where CLOB prices-history is silent) survive the clean-replace.
+# --end pins the series to the last group-stage day; it is a closed record.
 on:
   workflow_dispatch:
 
@@ -25,13 +27,13 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install "numpy==2.4.*" "scipy==1.17.*" "pandas==3.0.*" "requests==2.34.*"
-      - name: Backfill reach series (model per git state + Polymarket CLOB history)
-        run: PYTHONPATH=src python -m mc_simu.backfill_reach --n 50000 | tee run.log
-      - name: Seed Supabase reach_log
+      - name: Backfill group-winner series (model per git state + Polymarket CLOB history)
+        run: PYTHONPATH=src python -m mc_simu.backfill_group_winner --n 50000 --end 2026-06-27 | tee run.log
+      - name: Seed Supabase group_winner_log
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: PYTHONPATH=src python -m mc_simu.seed_reach | tee -a run.log
+        run: PYTHONPATH=src python -m mc_simu.seed_group_winner | tee -a run.log
       - name: Job summary
         if: always()
         run: |
