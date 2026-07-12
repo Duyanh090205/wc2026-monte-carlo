@@ -97,6 +97,7 @@ r16,,95,Argentina,Egypt,0.848,,0.152,0.7895,,0.2105,2-0,0.1216,2-0,3,2,REGULAR,,
 r16,,96,Colombia,Switzerland,0.5053,,0.4947,0.583,,0.417,1-1,0.1398,1-1,0,0,PENALTY_SHOOTOUT,3,4,Switzerland
 qf,,97,France,Morocco,0.7482,,0.2518,0.645,,0.355,2-0,0.1093,1-1,2,0,REGULAR,,,France
 qf,,98,Belgium,Spain,0.2539,,0.7461,0.3567,,0.6433,0-2,0.109,1-1,1,2,REGULAR,,,Spain
-qf,,99,England,Norway,0.689,,0.311,0.6101,,0.3899,1-1,0.1213,1-1,,,,,,
-qf,,100,Argentina,Switzerland,0.7007,,0.2993,0.6614,,0.3386,1-1,0.119,1-1,,,,,,
+qf,,99,England,Norway,0.689,,0.311,0.6101,,0.3899,1-1,0.1213,1-1,2,1,EXTRA_TIME,,,England
+qf,,100,Argentina,Switzerland,0.7007,,0.2993,0.6614,,0.3386,1-1,0.119,1-1,3,1,EXTRA_TIME,,,Argentina
 sf,,101,France,Spain,0.4701,,0.5299,0.4084,,0.5916,1-1,0.1393,1-1,,,,,,
+sf,,102,Argentina,England,0.4934,,0.5066,0.5417,,0.4583,1-1,0.1397,1-1,,,,,,
