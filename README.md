@@ -9,6 +9,11 @@ Split out of `IterLight-Lab/Prediction-Market-Project` (Stream 3) with full git
 history; the live trading engine stays there. This repo deploys nothing to the
 trading stack.
 
+**Live dashboard:** <https://mc-wc2026.streamlit.app> — the full WC2026 campaign
+(2026-06-10 to 2026-07-20, closed record): daily model-vs-market edge, JSD/L1
+tracking, per-round scorecard, bracket. Model was locked pre-tournament; every
+line on it is out-of-sample.
+
 ## Quick start
 
 ```
