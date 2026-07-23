@@ -285,6 +285,10 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--csv", type=Path, default=DATA / "wc2026_played.csv")
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--until", default=None,
+                   help="keep only matches with kickoff utcDate < this ISO instant "
+                        "— reconstructs the state a past daily run conditioned on "
+                        "(pair with --csv <tmp> to leave the live CSV alone)")
     args = p.parse_args(argv)
 
     token = os.environ.get("FOOTBALL_DATA_TOKEN")
@@ -297,7 +301,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"fetch_played: WARNING fetch failed ({e}) -- keeping existing CSV")
         return 0
 
-    banner(f"fetch_played: {len(finished)} finished matches from football-data.org")
+    if args.until:
+        finished = [m for m in finished if str(m.get("utcDate", "")) < args.until]
+    banner(f"fetch_played: {len(finished)} finished matches from football-data.org"
+           + (f" (kickoff < {args.until})" if args.until else ""))
     membership = load_group_membership()
     by_norm = {_norm(t): t for teams in membership.values() for t in teams}
     group_of = {t: g for g, teams in membership.items() for t in teams}

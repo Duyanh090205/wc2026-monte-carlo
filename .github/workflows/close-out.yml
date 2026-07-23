@@ -1,0 +1,74 @@
+name: close-out
+
+# One-off season close-out (WC2026 ended 2026-07-19), run via dispatch. Two
+# maintenance steps the read-only publishable key cannot do (the service key
+# lives only in Actions secrets):
+#   1. trim daily_log rows after 2026-07-20 — the cron kept re-appending frozen
+#      duplicates of the post-final snapshot until the schedule was retired
+#   2. backfill the 2026-06-29 hole (run lost to the pre-pipefail tee bug):
+#      as-of bracket state from football-data.org kickoff times, market side
+#      from venue history endpoints (end-of-06-28 closes)
+# Safe to re-run: the delete is idempotent, the backfill upserts on (date,team).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  close-out:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash -e -o pipefail {0}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install "numpy==2.4.*" "scipy==1.17.*" "pandas==3.0.*" "requests==2.34.*"
+      - name: Trim post-final daily_log rows (date > 2026-07-20)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          curl -sf -X DELETE -D headers.txt -o /dev/null \
+            -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" \
+            -H "Prefer: count=exact" \
+            "$SUPABASE_URL/rest/v1/daily_log?date=gt.2026-07-20"
+          grep -i content-range headers.txt | tee run.log || true
+      - name: Rebuild 2026-06-29 as-of played state
+        env:
+          FOOTBALL_DATA_TOKEN: ${{ secrets.FOOTBALL_DATA_TOKEN }}
+        run: |
+          PYTHONPATH=src python -m mc_simu.fetch_played \
+            --csv asof_0629.csv --until 2026-06-29T06:00:00Z | tee -a run.log
+      - name: Backfill daily_log 2026-06-29
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          PYTHONPATH=src python -m mc_simu.backfill_daily \
+            --date 2026-06-29 --played-csv asof_0629.csv --n 1000000 | tee -a run.log
+      - name: Verify
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          fetch() { curl -sf -H "apikey: $SUPABASE_SERVICE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_KEY" "$1" \
+            | python -c "import json,sys; print(len(json.load(sys.stdin)))"; }
+          left=$(fetch "$SUPABASE_URL/rest/v1/daily_log?date=gt.2026-07-20&select=team")
+          filled=$(fetch "$SUPABASE_URL/rest/v1/daily_log?date=eq.2026-06-29&select=team")
+          echo "post-final rows remaining: $left; 2026-06-29 rows: $filled" | tee -a run.log
+          test "$left" -eq 0
+          test "$filled" -gt 0
+      - name: Job summary
+        if: always()
+        run: |
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          tail -40 run.log >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
