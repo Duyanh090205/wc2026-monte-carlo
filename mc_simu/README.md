@@ -105,7 +105,8 @@ python -m mc_simu.replay_wc_conditioned --year 2022 --plot
 python -m mc_simu.backfill_group_winner   # -> data/mc_simu/group_winner_log.csv
 python -m mc_simu.backfill_reach          # -> data/mc_simu/reach_log.csv
 
-# Dashboard (local preview reads daily_log.csv; deployed app reads Supabase)
+# Dashboard (reads Supabase; falls back to the committed closed-record archive
+# under data/mc_simu/closed_record/ when unreachable — no credentials needed)
 streamlit run dashboard/mc_tracker.py
 ```
 

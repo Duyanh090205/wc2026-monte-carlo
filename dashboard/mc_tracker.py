@@ -4,7 +4,11 @@ Deploy on Streamlit Community Cloud pointing at this file; set in app secrets:
     SUPABASE_URL = "https://<project>.supabase.co"
     SUPABASE_ANON_KEY = "<anon key>"
 Local: streamlit run dashboard/mc_tracker.py
-(falls back to data/mc_simu/daily_log.csv when no credentials are set).
+
+The tournament is over, so every table also lives as a committed archive under
+data/mc_simu/closed_record/. Loaders fall back to it whenever Supabase is
+unreachable or empty (free-tier projects pause after inactivity) — the deployed
+app must keep working from the repo checkout alone.
 """
 
 import os
@@ -38,7 +42,9 @@ def _cred(name):
     return os.environ.get(name, "")
 
 
-LOCAL_CSV = os.path.join(os.path.dirname(__file__), "..", "data", "mc_simu", "daily_log.csv")
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "mc_simu")
+LOCAL_CSV = os.path.join(DATA_DIR, "daily_log.csv")
+ARCHIVE_DIR = os.path.join(DATA_DIR, "closed_record")
 
 
 def fetch_table(url: str, key: str, table: str, order: str,
@@ -60,25 +66,30 @@ def fetch_table(url: str, key: str, table: str, order: str,
 
 
 @st.cache_data(ttl=600)
-def load_log() -> pd.DataFrame:
+def load_log() -> tuple[pd.DataFrame, str]:
     url, key = _cred("SUPABASE_URL"), _cred("SUPABASE_ANON_KEY")
+    df, src = pd.DataFrame(), "live"
     if url and key:
-        df = fetch_table(url, key, "daily_log", "date.asc,team.asc")
-    elif os.path.exists(LOCAL_CSV):
-        df = pd.read_csv(LOCAL_CSV)
-    else:
-        st.error("Set SUPABASE_URL + SUPABASE_ANON_KEY in secrets, or generate "
-                 "data/mc_simu/daily_log.csv with `python -m mc_simu.run_daily`")
-        st.stop()
+        try:
+            df = fetch_table(url, key, "daily_log", "date.asc,team.asc")
+        except requests.RequestException:
+            df = pd.DataFrame()
     if df.empty:
-        st.warning("daily_log is empty — first scheduled run hasn't landed yet")
+        for path, name in ((os.path.join(ARCHIVE_DIR, "daily_log.csv"), "archive"),
+                           (LOCAL_CSV, "local CSV")):
+            if os.path.exists(path):
+                df, src = pd.read_csv(path), name
+                break
+    if df.empty:
+        st.error("Supabase unreachable and no committed archive found — expected "
+                 "data/mc_simu/closed_record/daily_log.csv in the repo")
         st.stop()
     df["date"] = pd.to_datetime(df["date"])
     for c in ("model_pct", "pm_pct", "kalshi_pct", "consensus_pct", "abs_pp", "rel_pct",
               "mle_pct", "pool_pct", "pm_bid", "pm_ask", "kalshi_bid", "kalshi_ask"):
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
-    return df
+    return df, src
 
 
 GW_CSV = os.path.join(os.path.dirname(__file__), "..", "data", "mc_simu", "group_winner_log.csv")
@@ -101,8 +112,9 @@ def load_series(table: str, csv_path: str) -> pd.DataFrame:
             df = fetch_table(url, key, table, SERIES_ORDER[table])
         except requests.RequestException:
             df = pd.DataFrame()
-    if df.empty and os.path.exists(csv_path):
-        df = pd.read_csv(csv_path)
+    for path in (os.path.join(ARCHIVE_DIR, f"{table}.csv"), csv_path):
+        if df.empty and os.path.exists(path):
+            df = pd.read_csv(path)
     if df.empty:
         return df
     df["date"] = pd.to_datetime(df["date"])
@@ -302,7 +314,7 @@ def jsd_pct(p: np.ndarray, q: np.ndarray, eps: float = 1e-6) -> float:
     return 0.5 * kl(p, m) + 0.5 * kl(q, m)
 
 
-df = load_log()
+df, log_src = load_log()
 dates = sorted(df["date"].unique())
 
 st.title("MC simulator vs market — WC2026 daily tracker")
@@ -311,6 +323,9 @@ st.caption("Model: ELO + squad-MV + star (static, locked pre-tournament) — re-
            "an unusual divergence from that bias is the signal. "
            "WC2026 concluded with the 2026-07-19 final — this log is a closed record "
            "(2026-06-10 to 2026-07-20; the last snapshot is the morning after the final).")
+if log_src != "live":
+    st.caption(f"Serving the committed closed-record {log_src} — the live database "
+               "is unreachable (identical data; the tournament is over).")
 
 day = st.sidebar.selectbox("Snapshot day", [pd.Timestamp(d).date() for d in reversed(dates)])
 top_n = st.sidebar.slider("Teams shown in charts", 10, 48, 20)
