@@ -1,9 +1,12 @@
 name: daily-tracker
 
 on:
-  schedule:
-    - cron: "30 8 * * *"   # 08:30 UTC daily, after the previous matchday fully settles
-    - cron: "0 13 * * *"   # self-heal retry: no-op when the morning snapshot landed
+  # WC2026 ended (final 2026-07-19) — schedule retired, the log is a closed
+  # record. Keep workflow_dispatch for manual backfills. To revive for a future
+  # tournament, restore:
+  #   schedule:
+  #     - cron: "30 8 * * *"   # 08:30 UTC daily, after the previous matchday settles
+  #     - cron: "0 13 * * *"   # self-heal retry: no-op when the morning snapshot landed
   workflow_dispatch:
 
 permissions:
