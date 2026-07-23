@@ -276,6 +276,22 @@ def apply_market_source(df: pd.DataFrame, col: str) -> pd.DataFrame:
     return out
 
 
+def alive_norm(g: pd.DataFrame) -> pd.DataFrame:
+    """Condition on teams still alive: drop model==0 rows (eliminated) and
+    renormalize both sides. Platforms keep stale/dust quotes on knocked-out teams
+    (Kalshi mids of 2-3c, Polymarket min-tick asks) — comparing against those adds
+    phantom mass that deflates every live favorite's market share. Pre-knockout
+    days are unaffected (nothing to drop, sides already ~normalized)."""
+    a = g[g["model_pct"] > 0].copy()
+    if a.empty or a["mkt_pct"].sum() <= 0:
+        return a
+    a["model_pct"] = a["model_pct"] * 100 / a["model_pct"].sum()
+    a["mkt_pct"] = a["mkt_pct"] * 100 / a["mkt_pct"].sum()
+    a["abs_pp"] = a["model_pct"] - a["mkt_pct"]
+    a["rel_pct"] = (a["mkt_pct"] - a["model_pct"]) / a["model_pct"] * 100
+    return a
+
+
 def jsd_pct(p: np.ndarray, q: np.ndarray, eps: float = 1e-6) -> float:
     """Base-2 JSD, mirrors mc_simu.tune_to_market.jsd so numbers match run logs."""
     p = np.maximum(p, eps)
@@ -293,7 +309,8 @@ st.title("MC simulator vs market — WC2026 daily tracker")
 st.caption("Model: ELO + squad-MV + star (static, locked pre-tournament) — re-conditioned daily "
            "on played results only. Goal: track the market with a stable, understood bias; "
            "an unusual divergence from that bias is the signal. "
-           "New snapshot daily at 08:30 UTC (04:30 ET), after the previous matchday settles.")
+           "WC2026 concluded with the 2026-07-19 final — this log is a closed record "
+           "(2026-06-10 to 2026-07-20; the last snapshot is the morning after the final).")
 
 day = st.sidebar.selectbox("Snapshot day", [pd.Timestamp(d).date() for d in reversed(dates)])
 top_n = st.sidebar.slider("Teams shown in charts", 10, 48, 20)
@@ -338,22 +355,26 @@ with st.sidebar.expander("Data sources"):
         "auto-fetched daily\n"
         "- **Bracket & fixtures** — FIFA final draw, Wikipedia snapshots")
 
-l1 = (snap["model_pct"] - snap["mkt_pct"]).abs().sum()
-j = jsd_pct(snap["model_pct"].to_numpy(), snap["mkt_pct"].to_numpy())
+alive = alive_norm(snap)
+l1 = (alive["model_pct"] - alive["mkt_pct"]).abs().sum()
+j = jsd_pct(alive["model_pct"].to_numpy(), alive["mkt_pct"].to_numpy())
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("Days tracked", len(dates),
           help="Number of daily snapshots in the log (one per cron run).")
 m2.metric(f"JSD vs {market_src}", f"{j:.4f}",
           help="Jensen-Shannon divergence (base 2) between the model's champion "
                "distribution and the selected market's distribution. 0 = identical, "
-               "1 = no overlap. Our single closeness number — the daily run logs the "
-               "consensus variant of this figure.")
+               "1 = no overlap. Our single closeness number. Computed over teams "
+               "still alive, both sides renormalized — eliminated teams keep "
+               "stale/dust market quotes that would add phantom divergence (so this "
+               "can differ from the unconditioned figure the daily run logs).")
 m3.metric("L1 distance", f"{l1:.1f} pp",
-          help="Sum of |model − market| over all teams, in percentage points. "
-               "It double-counts: 23 pp means ~11.5 pp of probability mass sits on "
-               "different teams than the market puts it on.")
-m4.metric("Max |edge|", f"{snap['abs_pp'].abs().max():.2f} pp",
-          help="Largest single-team gap |model − market| in today's snapshot.")
+          help="Sum of |model − market| over teams still alive, in percentage "
+               "points. It double-counts: 23 pp means ~11.5 pp of probability mass "
+               "sits on different teams than the market puts it on.")
+m4.metric("Max |edge|", f"{alive['abs_pp'].abs().max():.2f} pp",
+          help="Largest single-team gap |model − market| among teams still alive "
+               "in today's snapshot.")
 
 with st.expander("How to read these numbers"):
     st.markdown(
@@ -380,7 +401,13 @@ with tab_today:
                "Right: the same gap relative to the model's own number — this is where the "
                "longshot premium becomes visible.")
     c_abs, c_rel = st.columns(2)
-    sub = snap.reindex(snap["abs_pp"].abs().sort_values(ascending=False).index).head(top_n)
+    n_out = len(snap) - len(alive)
+    if n_out:
+        c_abs.caption(f"{n_out} eliminated teams hidden (model 0%): platforms still show "
+                      "stale/dust quotes on them, which is leftover order-book noise, not "
+                      "edge. Both sides renormalized over the live teams; raw rows stay "
+                      "in the Data tab.")
+    sub = alive.reindex(alive["abs_pp"].abs().sort_values(ascending=False).index).head(top_n)
     sub = sub.sort_values("abs_pp")
     fig = go.Figure(go.Bar(
         x=sub["abs_pp"], y=sub["team"], orientation="h",
@@ -395,7 +422,7 @@ with tab_today:
     c_abs.plotly_chart(fig, width="stretch")
 
     mc_floor = 0.005
-    rel = snap.dropna(subset=["rel_pct"])
+    rel = alive.dropna(subset=["rel_pct"])
     rel = rel[rel["model_pct"] >= mc_floor]
     n_noise = len(snap) - len(rel)
     if n_noise:
@@ -777,11 +804,14 @@ with tab_stab:
                "(JSD + L1) — flat is good. Right: per-team edge heatmap — a row keeping its "
                "colour is an understood bias; a row flipping colour is the anomaly to investigate.")
     c_l1, c_hm = st.columns([1, 2])
-    daily = df.groupby("date").apply(
-        lambda g: pd.Series({
-            "L1 (pp)": (g["model_pct"] - g["mkt_pct"]).abs().sum(),
-            "JSD": jsd_pct(g["model_pct"].to_numpy(), g["mkt_pct"].to_numpy()),
-        }), include_groups=False).reset_index()
+    def _daily_metrics(g: pd.DataFrame) -> pd.Series:
+        a = alive_norm(g)
+        return pd.Series({
+            "L1 (pp)": (a["model_pct"] - a["mkt_pct"]).abs().sum(),
+            "JSD": jsd_pct(a["model_pct"].to_numpy(), a["mkt_pct"].to_numpy()),
+        })
+
+    daily = df.groupby("date").apply(_daily_metrics, include_groups=False).reset_index()
     fig = px.line(daily, x="date", y="L1 (pp)", markers=True, template=TPL, height=300,
                   title="Total model–market distance per day")
     c_l1.plotly_chart(fig, width="stretch")
@@ -791,12 +821,14 @@ with tab_stab:
 
     top_teams = (df.groupby("team")["mkt_pct"].max()
                  .sort_values(ascending=False).head(top_n).index)
-    piv = (df[df["team"].isin(top_teams)]
-           .pivot_table(index="team", columns="date", values="abs_pp")
+    hm = df[df["team"].isin(top_teams)].copy()
+    # Once out, a team's true edge is 0 (model 0% vs a market that can only pay 0),
+    # but platforms keep stale/dust quotes on eliminated teams — zero those cells so
+    # the row goes neutral instead of showing a phantom bias. fillna covers days a
+    # platform didn't quote the team at all.
+    hm.loc[hm["model_pct"] <= 0, "abs_pp"] = 0.0
+    piv = (hm.pivot_table(index="team", columns="date", values="abs_pp")
            .reindex(top_teams))
-    # Eliminated teams drop out of the market (no pm_pct) so their later cells are
-    # NaN and render as black bands. Their edge is genuinely ~0 once out (model 0%
-    # vs market 0%), so fill with 0 -> neutral colour instead of a broken-looking gap.
     piv = piv.fillna(0)
     piv.columns = [pd.Timestamp(c).strftime("%m-%d") for c in piv.columns]
     fig = px.imshow(piv, color_continuous_scale="RdYlGn", zmin=-3, zmax=3, aspect="auto",
