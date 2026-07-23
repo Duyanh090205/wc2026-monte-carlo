@@ -8,9 +8,18 @@ name: close-out
 #   2. backfill the 2026-06-29 hole (run lost to the pre-pipefail tee bug):
 #      as-of bracket state from football-data.org kickoff times, market side
 #      from venue history endpoints (end-of-06-28 closes)
-# Safe to re-run: the delete is idempotent, the backfill upserts on (date,team).
+#   3. seed the 2026-06-10 launch-day snapshot — it predates the Supabase push
+#      wiring and lived only in the machine-local CSV, so the public record
+#      started a day late (opening snapshot = the pre-tournament baseline)
+# Safe to re-run: the delete is idempotent, backfill and seed upsert on
+# (date,team). Dispatch with sims=false to skip the ~16-min 1M-sim backfill
+# when only the cheap steps are needed.
 on:
   workflow_dispatch:
+    inputs:
+      sims:
+        description: "run the 1M-sim 2026-06-29 backfill (false = skip)"
+        default: "true"
 
 permissions:
   contents: read
@@ -41,18 +50,33 @@ jobs:
             "$SUPABASE_URL/rest/v1/daily_log?date=gt.2026-07-20"
           grep -i content-range headers.txt | tee run.log || true
       - name: Rebuild 2026-06-29 as-of played state
+        if: github.event.inputs.sims != 'false'
         env:
           FOOTBALL_DATA_TOKEN: ${{ secrets.FOOTBALL_DATA_TOKEN }}
         run: |
           PYTHONPATH=src python -m mc_simu.fetch_played \
             --csv asof_0629.csv --until 2026-06-29T06:00:00Z | tee -a run.log
       - name: Backfill daily_log 2026-06-29
+        if: github.event.inputs.sims != 'false'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           PYTHONPATH=src python -m mc_simu.backfill_daily \
             --date 2026-06-29 --played-csv asof_0629.csv --n 1000000 | tee -a run.log
+      - name: Seed 2026-06-10 launch-day rows
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          PYTHONPATH=src python - <<'EOF' | tee -a run.log
+          import csv
+          from mc_simu.run_daily import LOG_COLS, push_supabase
+          with open("data/mc_simu/seed_daily_log_2026-06-10.csv", newline="") as f:
+              rows = [{**{c: "" for c in LOG_COLS}, **r} for r in csv.DictReader(f)]
+          assert push_supabase(rows), "Supabase creds missing"
+          print(f"seeded {len(rows)} launch-day rows (2026-06-10)")
+          EOF
       - name: Verify
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -63,9 +87,11 @@ jobs:
             | python -c "import json,sys; print(len(json.load(sys.stdin)))"; }
           left=$(fetch "$SUPABASE_URL/rest/v1/daily_log?date=gt.2026-07-20&select=team")
           filled=$(fetch "$SUPABASE_URL/rest/v1/daily_log?date=eq.2026-06-29&select=team")
-          echo "post-final rows remaining: $left; 2026-06-29 rows: $filled" | tee -a run.log
+          day0=$(fetch "$SUPABASE_URL/rest/v1/daily_log?date=eq.2026-06-10&select=team")
+          echo "post-final rows remaining: $left; 2026-06-29 rows: $filled; 2026-06-10 rows: $day0" | tee -a run.log
           test "$left" -eq 0
           test "$filled" -gt 0
+          test "$day0" -gt 0
       - name: Job summary
         if: always()
         run: |
