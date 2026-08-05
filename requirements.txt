@@ -16,6 +16,10 @@ tqdm>=4.66.0,<5
 # Dashboard (Streamlit Cloud installs this file; CI installs only the core four)
 streamlit>=1.35.0,<2
 plotly>=5.22.0,<7
+# starlette 1.4.0 made GZipResponder's thread_minimum_size a required kwarg,
+# which streamlit's gzip middleware does not pass -> every request 500s
+# (took the deployed app down on the 2026-08-05 wake-from-sleep env rebuild)
+starlette<1.4
 
 # Tests
 pytest>=8.0.0
