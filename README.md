@@ -18,7 +18,7 @@ line on it is out-of-sample.
 
 ```
 pip install -r requirements.txt
-PYTHONPATH=src python -m pytest tests/mc_simu -q          # 296 tests
+PYTHONPATH=src python -m pytest tests/mc_simu -q          # 282 tests
 PYTHONPATH=src python -m mc_simu.run_mc_simu              # full WC2026 sim
 PYTHONPATH=src python -m mc_simu.run_daily                # daily conditional rerun vs live market
 PYTHONPATH=src python -m mc_simu.replay_wc_conditioned --year 2022 --plot   # backtest figure
@@ -37,6 +37,6 @@ PYTHONPATH=src python -m mc_simu.replay_wc_conditioned --year 2022 --plot   # ba
 
 ELO (eloratings.net reconstruction, as-of) + squad market-value blend (alpha=0.5)
 + star presence (X=15), Poisson grid D=1400, diagonal inflation 0.20
-(LOTO-CV validated over 11 tournaments). Static during a tournament — the daily
+(LOTO-CV validated over 12 tournaments). Static during a tournament — the daily
 rerun re-conditions on locked results only, never re-fits. See
 [`mc_simu/MODEL_SPEC.md`](mc_simu/MODEL_SPEC.md) and [`mc_simu/audits/`](mc_simu/audits/).

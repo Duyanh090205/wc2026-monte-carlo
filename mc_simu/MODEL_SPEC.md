@@ -4,7 +4,8 @@
 
 **Audience:** Sam, Khang, team reviewers, future maintainers.
 
-**Status:** Phase 0, 1, 3 complete. Phase 4 (LOTO-CV tuning) and Phase 5 (presentation) pending.
+**Status:** Phases 0, 1, 3 complete. Phase 4 (LOTO-CV tuning) completed 2026-06-11 — full G1-G7
+result tables retained. Phase 5 (presentation) pending.
 
 **Last updated:** 2026-05-21
 
@@ -299,7 +300,7 @@ The simulator has been built as a **3-layer barebone harness**:
 | **Historical tournament replay** (Σ log P(actual champion) across historical tournaments) | **PRIMARY** — picks Elo source per Sam's framework | n=11 in Phase 3 (Euro 2016 deferred — different bracket geometry from other Euros; adapter pending) |
 | **LOTO-CV match-Brier** | **SECONDARY** — tunes (α, β, diagonal, D) within each Elo source | n~760 matches across all 12 target tournaments |
 
-### 4.3 Tuning protocol (Phase 4 — PENDING)
+### 4.3 Tuning protocol (Phase 4 — COMPLETE, 2026-06-11)
 
 **Leave-one-tournament-out cross-validation (LOTO-CV):**
 
