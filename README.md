@@ -18,7 +18,7 @@ line on it is out-of-sample.
 
 ```
 pip install -r requirements.txt
-PYTHONPATH=src python -m pytest tests/mc_simu -q          # 282 tests
+PYTHONPATH=src python -m pytest tests/mc_simu -q          # 384 tests
 PYTHONPATH=src python -m mc_simu.run_mc_simu              # full WC2026 sim
 PYTHONPATH=src python -m mc_simu.run_daily                # daily conditional rerun vs live market
 PYTHONPATH=src python -m mc_simu.replay_wc_conditioned --year 2022 --plot   # backtest figure
