@@ -16,6 +16,19 @@ line on it is out-of-sample.
 
 ## Quick start
 
+**Check the published numbers first.** This reproduces every figure in the write-up
+from the frozen campaign record — no dependencies, no simulation run, about a second:
+
+```
+python verify_scorecard.py
+```
+
+It prints the champion prices locked on 10 June against Polymarket and Kalshi, the
+top-four semifinal call and whether those four reached, and the group and knockout
+scorecards with their baselines.
+
+To run the model itself:
+
 ```
 pip install -r requirements.txt
 PYTHONPATH=src python -m pytest tests/mc_simu -q          # 384 tests
